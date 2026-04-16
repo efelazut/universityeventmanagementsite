@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UniversityEventManagement.Api.Data;
-using UniversityEventManagement.Api.Models;
+using UniversityEventManagement.Api.DTOs;
+using UniversityEventManagement.Api.Services;
 
 namespace UniversityEventManagement.Api.Controllers;
 
@@ -9,76 +9,59 @@ namespace UniversityEventManagement.Api.Controllers;
 [Route("api/[controller]")]
 public class RoomsController : ControllerBase
 {
-    private static readonly InMemoryEntityStore<Room> Store = InMemoryDataStore.Rooms;
+    private readonly IRoomService _roomService;
+
+    public RoomsController(IRoomService roomService)
+    {
+        _roomService = roomService;
+    }
 
     [AllowAnonymous]
     [HttpGet]
-    public ActionResult<IEnumerable<Room>> GetAll()
+    public ActionResult<IEnumerable<RoomResponse>> GetAll()
     {
-        return Ok(Store.GetAll());
+        return Ok(_roomService.GetAll());
     }
 
     [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public ActionResult<Room> GetById(int id)
+    public ActionResult<RoomResponse> GetById(int id)
     {
-        var room = Store.GetById(id);
-        if (room is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(room);
+        return this.ToActionResult(_roomService.GetById(id));
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPost]
-    public IActionResult Create([FromBody] Room room)
+    public ActionResult<RoomResponse> Create([FromBody] RoomRequest request)
     {
-        if (room is null)
-        {
-            return BadRequest();
-        }
-
-        var createdRoom = Store.Create(new Room
-        {
-            Name = room.Name,
-            Capacity = room.Capacity,
-            Location = room.Location
-        });
-
-        return CreatedAtAction(nameof(GetById), new { id = createdRoom.Id }, createdRoom);
+        return this.ToActionResult(_roomService.Create(request), nameof(GetById));
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, [FromBody] Room room)
+    public ActionResult<RoomResponse> Update(int id, [FromBody] RoomRequest request)
     {
-        if (room is null)
-        {
-            return BadRequest();
-        }
-
-        if (room.Id != 0 && room.Id != id)
-        {
-            return BadRequest();
-        }
-
-        var updatedRoom = new Room
-        {
-            Id = id,
-            Name = room.Name,
-            Capacity = room.Capacity,
-            Location = room.Location
-        };
-
-        return Store.Update(id, updatedRoom) ? Ok(updatedRoom) : NotFound();
+        return this.ToActionResult(_roomService.Update(id, request));
     }
 
     [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public IActionResult Delete(int id)
     {
-        return Store.Delete(id) ? Ok() : NotFound();
+        return this.ToActionResult(_roomService.Delete(id));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("availability")]
+    public ActionResult<IEnumerable<RoomAvailabilityResponse>> GetAvailability()
+    {
+        return Ok(_roomService.GetAvailability());
+    }
+
+    [AllowAnonymous]
+    [HttpGet("popularity")]
+    public ActionResult<IEnumerable<RoomPopularityResponse>> GetPopularity()
+    {
+        return Ok(_roomService.GetPopularity());
     }
 }

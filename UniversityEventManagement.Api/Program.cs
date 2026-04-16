@@ -1,15 +1,17 @@
 using System.Text;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using UniversityEventManagement.Api.Data;
+using UniversityEventManagement.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration.GetConnectionString("SqlExpressFallback")
-    ?? "Server=localhost;Database=UniversityEventManagementDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT signing key is not configured.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -37,6 +39,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -73,7 +76,19 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sqlServerOptions =>
+        sqlServerOptions.EnableRetryOnFailure()));
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IClubService, ClubService>();
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IEventReviewService, EventReviewService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IHomeService, HomeService>();
 
 builder.Services.AddCors(options =>
 {
@@ -86,18 +101,39 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-var logger = app.Logger;
-
-try
+app.UseExceptionHandler(exceptionHandlerApp =>
 {
-    using var scope = app.Services.CreateScope();
+    exceptionHandlerApp.Run(async context =>
+    {
+        var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
+        var exception = exceptionHandlerFeature?.Error;
+
+        if (exception is not null)
+        {
+            app.Logger.LogError(exception, "Unhandled exception while processing request {Path}", context.Request.Path);
+        }
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/problem+json";
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status500InternalServerError,
+            Title = "An unexpected error occurred.",
+            Detail = app.Environment.IsDevelopment()
+                ? exception?.Message
+                : "The server could not process the request."
+        };
+
+        await context.Response.WriteAsJsonAsync(problemDetails);
+    });
+});
+
+using (var scope = app.Services.CreateScope())
+{
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    _ = await dbContext.Database.CanConnectAsync();
-}
-catch (Exception exception)
-{
-    logger.LogWarning(exception, "Database connection is unavailable during startup. The API will continue running.");
+    await dbContext.Database.MigrateAsync();
+    await AppDbSeeder.SeedAsync(dbContext);
 }
 
 app.UseRouting();

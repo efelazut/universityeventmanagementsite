@@ -1,7 +1,8 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UniversityEventManagement.Api.Data;
-using UniversityEventManagement.Api.Models;
-using UniversityEventManagement.Api.Security;
+using UniversityEventManagement.Api.DTOs;
+using UniversityEventManagement.Api.Services;
 
 namespace UniversityEventManagement.Api.Controllers;
 
@@ -9,110 +10,60 @@ namespace UniversityEventManagement.Api.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    private static readonly InMemoryEntityStore<User> Store = InMemoryDataStore.Users;
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService)
+    {
+        _userService = userService;
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<UserProfileResponse> GetCurrentUser()
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        return string.IsNullOrWhiteSpace(email)
+            ? Unauthorized()
+            : this.ToActionResult(_userService.GetCurrentUser(email));
+    }
+
+    [Authorize]
+    [HttpGet("me/events")]
+    public ActionResult<UserEventActivityResponse> GetCurrentUserEvents()
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        return string.IsNullOrWhiteSpace(email)
+            ? Unauthorized()
+            : this.ToActionResult(_userService.GetCurrentUserEvents(email));
+    }
 
     [HttpGet]
-    public ActionResult<IEnumerable<User>> GetAll()
+    public ActionResult<IEnumerable<UserResponse>> GetAll()
     {
-        return Ok(Store.GetAll());
+        return Ok(_userService.GetAll());
     }
 
     [HttpGet("{id:int}")]
-    public ActionResult<User> GetById(int id)
+    public ActionResult<UserResponse> GetById(int id)
     {
-        var user = Store.GetById(id);
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(user);
+        return this.ToActionResult(_userService.GetById(id));
     }
 
     [HttpPost]
-    public ActionResult<User> Create([FromBody] User user)
+    public ActionResult<UserResponse> Create([FromBody] UserRequest request)
     {
-        if (user is null ||
-            string.IsNullOrWhiteSpace(user.Name) ||
-            string.IsNullOrWhiteSpace(user.Email) ||
-            string.IsNullOrWhiteSpace(user.Password) ||
-            string.IsNullOrWhiteSpace(user.Role))
-        {
-            return BadRequest();
-        }
-
-        if (!UserRoles.IsSupported(user.Role))
-        {
-            return BadRequest("Invalid role");
-        }
-
-        var normalizedEmail = user.Email.Trim();
-        var existingUser = Store.GetAll().FirstOrDefault(existingUser =>
-            existingUser.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase));
-
-        if (existingUser is not null)
-        {
-            return Conflict("Email is already registered");
-        }
-
-        var createdUser = Store.Create(new User
-        {
-            Name = user.Name,
-            Email = normalizedEmail,
-            Password = user.Password,
-            Role = UserRoles.Normalize(user.Role)
-        });
-
-        return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
+        return this.ToActionResult(_userService.Create(request), nameof(GetById));
     }
 
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, [FromBody] User user)
+    public ActionResult<UserResponse> Update(int id, [FromBody] UserRequest request)
     {
-        if (user is null ||
-            string.IsNullOrWhiteSpace(user.Name) ||
-            string.IsNullOrWhiteSpace(user.Email) ||
-            string.IsNullOrWhiteSpace(user.Password) ||
-            string.IsNullOrWhiteSpace(user.Role))
-        {
-            return BadRequest();
-        }
-
-        if (user.Id != 0 && user.Id != id)
-        {
-            return BadRequest();
-        }
-
-        if (!UserRoles.IsSupported(user.Role))
-        {
-            return BadRequest("Invalid role");
-        }
-
-        var normalizedEmail = user.Email.Trim();
-        var duplicateEmail = Store.GetAll().Any(existingUser =>
-            existingUser.Id != id &&
-            existingUser.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase));
-
-        if (duplicateEmail)
-        {
-            return Conflict("Email is already registered");
-        }
-
-        var updatedUser = new User
-        {
-            Id = id,
-            Name = user.Name,
-            Email = normalizedEmail,
-            Password = user.Password,
-            Role = UserRoles.Normalize(user.Role)
-        };
-
-        return Store.Update(id, updatedUser) ? Ok(updatedUser) : NotFound();
+        return this.ToActionResult(_userService.Update(id, request));
     }
 
     [HttpDelete("{id:int}")]
     public IActionResult Delete(int id)
     {
-        return Store.Delete(id) ? Ok() : NotFound();
+        return this.ToActionResult(_userService.Delete(id));
     }
 }

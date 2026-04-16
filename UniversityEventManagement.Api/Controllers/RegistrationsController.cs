@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UniversityEventManagement.Api.Data;
-using UniversityEventManagement.Api.Models;
+using System.Security.Claims;
+using UniversityEventManagement.Api.DTOs;
+using UniversityEventManagement.Api.Services;
 
 namespace UniversityEventManagement.Api.Controllers;
 
@@ -9,104 +10,81 @@ namespace UniversityEventManagement.Api.Controllers;
 [Route("api/[controller]")]
 public class RegistrationsController : ControllerBase
 {
-    private static readonly InMemoryEntityStore<Registration> Store = InMemoryDataStore.Registrations;
-    private static readonly InMemoryEntityStore<Event> EventsStore = InMemoryDataStore.Events;
-    private static readonly InMemoryEntityStore<User> UsersStore = InMemoryDataStore.Users;
+    private readonly IRegistrationService _registrationService;
+
+    public RegistrationsController(IRegistrationService registrationService)
+    {
+        _registrationService = registrationService;
+    }
 
     [AllowAnonymous]
     [HttpGet]
-    public ActionResult<IEnumerable<Registration>> GetAll()
+    public ActionResult<IEnumerable<RegistrationResponse>> GetAll()
     {
-        return Ok(Store.GetAll());
+        return Ok(_registrationService.GetAll());
     }
 
     [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public ActionResult<Registration> GetById(int id)
+    public ActionResult<RegistrationResponse> GetById(int id)
     {
-        var registration = Store.GetById(id);
-        if (registration is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(registration);
+        return this.ToActionResult(_registrationService.GetById(id));
     }
 
     [Authorize(Roles = "Student")]
     [HttpPost]
-    public IActionResult Create([FromBody] Registration registration)
+    public ActionResult<RegistrationResponse> Create([FromBody] RegistrationRequest request)
     {
-        if (registration is null)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
         {
-            return BadRequest();
+            return Unauthorized();
         }
 
-        var @event = EventsStore.GetById(registration.EventId);
-        if (@event is null)
-        {
-            return NotFound("Event not found");
-        }
-
-        var user = UsersStore.GetById(registration.UserId);
-        if (user is null)
-        {
-            return NotFound("User not found");
-        }
-
-        var registrations = Store.GetAll();
-        var duplicateRegistration = registrations.Any(existingRegistration =>
-            existingRegistration.EventId == registration.EventId &&
-            existingRegistration.UserId == registration.UserId);
-
-        if (duplicateRegistration)
-        {
-            return BadRequest("User is already registered for this event");
-        }
-
-        var eventRegistrationCount = registrations.Count(existingRegistration =>
-            existingRegistration.EventId == registration.EventId);
-
-        if (eventRegistrationCount >= @event.Capacity)
-        {
-            return BadRequest("Event is full");
-        }
-
-        var createdRegistration = Store.Create(new Registration
-        {
-            UserId = registration.UserId,
-            EventId = registration.EventId
-        });
-
-        return CreatedAtAction(nameof(GetById), new { id = createdRegistration.Id }, createdRegistration);
+        return this.ToActionResult(_registrationService.Create(request, currentUserId, userRole), nameof(GetById));
     }
 
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, [FromBody] Registration registration)
+    public ActionResult<RegistrationResponse> Update(int id, [FromBody] RegistrationRequest request)
     {
-        if (registration is null)
-        {
-            return BadRequest();
-        }
-
-        if (registration.Id != 0 && registration.Id != id)
-        {
-            return BadRequest();
-        }
-
-        var updatedRegistration = new Registration
-        {
-            Id = id,
-            UserId = registration.UserId,
-            EventId = registration.EventId
-        };
-
-        return Store.Update(id, updatedRegistration) ? Ok(updatedRegistration) : NotFound();
+        return this.ToActionResult(_registrationService.Update(id, request));
     }
 
     [HttpDelete("{id:int}")]
     public IActionResult Delete(int id)
     {
-        return Store.Delete(id) ? Ok() : NotFound();
+        return this.ToActionResult(_registrationService.Delete(id));
+    }
+
+    [Authorize(Roles = "Student")]
+    [HttpDelete("event/{eventId:int}/me")]
+    public IActionResult CancelMyRegistration(int eventId)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
+        {
+            return Unauthorized();
+        }
+
+        return this.ToActionResult(_registrationService.CancelForUser(eventId, currentUserId, userRole));
+    }
+
+    [Authorize(Roles = "Admin,ClubManager")]
+    [HttpPost("{id:int}/{decision}")]
+    public ActionResult<RegistrationResponse> Decide(int id, string decision)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
+        {
+            return Unauthorized();
+        }
+
+        return this.ToActionResult(_registrationService.Decide(id, decision, currentUserId, userRole));
     }
 }

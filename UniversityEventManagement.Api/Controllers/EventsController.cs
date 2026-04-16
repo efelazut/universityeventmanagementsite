@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UniversityEventManagement.Api.Data;
-using UniversityEventManagement.Api.Models;
+using System.Security.Claims;
+using UniversityEventManagement.Api.DTOs;
+using UniversityEventManagement.Api.Services;
 
 namespace UniversityEventManagement.Api.Controllers;
 
@@ -9,127 +10,118 @@ namespace UniversityEventManagement.Api.Controllers;
 [Route("api/[controller]")]
 public class EventsController : ControllerBase
 {
-    private static readonly InMemoryEntityStore<Event> Store = InMemoryDataStore.Events;
-    private static readonly InMemoryEntityStore<Room> RoomsStore = InMemoryDataStore.Rooms;
-    private static readonly InMemoryEntityStore<Club> ClubsStore = InMemoryDataStore.Clubs;
+    private readonly IEventService _eventService;
+
+    public EventsController(IEventService eventService)
+    {
+        _eventService = eventService;
+    }
 
     [AllowAnonymous]
     [HttpGet]
-    public ActionResult<IEnumerable<Event>> GetAll()
+    public ActionResult<IEnumerable<EventResponse>> GetAll()
     {
-        return Ok(Store.GetAll());
+        return Ok(_eventService.GetAll().Select(SanitizeEvent));
     }
 
     [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public ActionResult<Event> GetById(int id)
+    public ActionResult<EventResponse> GetById(int id)
     {
-        var @event = Store.GetById(id);
-        if (@event is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(@event);
+        var result = _eventService.GetById(id);
+        return result.Status == ServiceResultStatus.Ok && result.Data is not null
+            ? Ok(SanitizeEvent(result.Data))
+            : this.ToActionResult(result);
     }
 
     [Authorize(Roles = "Admin,ClubManager")]
     [HttpPost]
-    public IActionResult Create([FromBody] Event @event)
+    public ActionResult<EventResponse> Create([FromBody] EventRequest request)
     {
-        if (@event is null)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
         {
-            return BadRequest();
+            return Unauthorized();
         }
 
-        var room = RoomsStore.GetById(@event.RoomId);
-        if (room is null)
-        {
-            return NotFound("Room not found");
-        }
-
-        var club = ClubsStore.GetById(@event.ClubId);
-        if (club is null)
-        {
-            return NotFound("Club not found");
-        }
-
-        var roomConflict = Store.GetAll().Any(existingEvent =>
-            existingEvent.RoomId == @event.RoomId &&
-            existingEvent.DateTime == @event.DateTime);
-
-        if (roomConflict)
-        {
-            return BadRequest("Room is already booked for this time");
-        }
-
-        var createdEvent = Store.Create(new Event
-        {
-            Title = @event.Title,
-            Description = @event.Description,
-            DateTime = @event.DateTime,
-            Capacity = @event.Capacity,
-            ClubId = @event.ClubId,
-            RoomId = @event.RoomId
-        });
-
-        return CreatedAtAction(nameof(GetById), new { id = createdEvent.Id }, createdEvent);
+        return this.ToActionResult(_eventService.Create(request, currentUserId, userRole), nameof(GetById));
     }
 
     [Authorize(Roles = "Admin,ClubManager")]
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, [FromBody] Event @event)
+    public ActionResult<EventResponse> Update(int id, [FromBody] EventRequest request)
     {
-        if (@event is null)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
         {
-            return BadRequest();
+            return Unauthorized();
         }
 
-        if (@event.Id != 0 && @event.Id != id)
-        {
-            return BadRequest();
-        }
-
-        var room = RoomsStore.GetById(@event.RoomId);
-        if (room is null)
-        {
-            return NotFound("Room not found");
-        }
-
-        var club = ClubsStore.GetById(@event.ClubId);
-        if (club is null)
-        {
-            return NotFound("Club not found");
-        }
-
-        var roomConflict = Store.GetAll().Any(existingEvent =>
-            existingEvent.Id != id &&
-            existingEvent.RoomId == @event.RoomId &&
-            existingEvent.DateTime == @event.DateTime);
-
-        if (roomConflict)
-        {
-            return BadRequest("Room is already booked for this time");
-        }
-
-        var updatedEvent = new Event
-        {
-            Id = id,
-            Title = @event.Title,
-            Description = @event.Description,
-            DateTime = @event.DateTime,
-            Capacity = @event.Capacity,
-            ClubId = @event.ClubId,
-            RoomId = @event.RoomId
-        };
-
-        return Store.Update(id, updatedEvent) ? Ok(updatedEvent) : NotFound();
+        return this.ToActionResult(_eventService.Update(id, request, currentUserId, userRole));
     }
 
     [Authorize(Roles = "Admin,ClubManager")]
     [HttpDelete("{id:int}")]
     public IActionResult Delete(int id)
     {
-        return Store.Delete(id) ? Ok() : NotFound();
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(userRole))
+        {
+            return Unauthorized();
+        }
+
+        return this.ToActionResult(_eventService.Delete(id, currentUserId, userRole));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("past")]
+    public ActionResult<IEnumerable<EventResponse>> GetPast()
+    {
+        return Ok(_eventService.GetPast().Select(SanitizeEvent));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("upcoming")]
+    public ActionResult<IEnumerable<EventResponse>> GetUpcoming()
+    {
+        return Ok(_eventService.GetUpcoming().Select(SanitizeEvent));
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/registrations")]
+    public ActionResult<IReadOnlyList<RegistrationResponse>> GetRegistrations(int id)
+    {
+        return this.ToActionResult(_eventService.GetRegistrations(id));
+    }
+
+    [Authorize(Roles = "Admin,ClubManager")]
+    [HttpPost("{id:int}/attendance/{userId:int}")]
+    public ActionResult<AttendanceResponse> MarkAttendance(int id, int userId)
+    {
+        return this.ToActionResult(_eventService.MarkAttendance(id, userId));
+    }
+
+    private EventResponse SanitizeEvent(EventResponse response)
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        var canSeeCosts = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "ClubManager", StringComparison.OrdinalIgnoreCase);
+
+        if (canSeeCosts)
+        {
+            return response;
+        }
+
+        response.PosterCost = 0;
+        response.CateringCost = 0;
+        response.SpeakerFee = 0;
+        response.TotalCost = 0;
+        return response;
     }
 }
