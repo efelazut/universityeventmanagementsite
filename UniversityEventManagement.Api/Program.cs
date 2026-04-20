@@ -145,6 +145,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles();
 app.UseCors("AllowAllDevelopment");
 app.UseAuthentication();
 app.UseAuthorization();

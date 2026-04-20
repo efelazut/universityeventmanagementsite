@@ -64,4 +64,11 @@ public class RoomsController : ControllerBase
     {
         return Ok(_roomService.GetPopularity());
     }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/availability")]
+    public ActionResult<RoomDayAvailabilityResponse> GetDayAvailability(int id, [FromQuery] DateTime? date)
+    {
+        return this.ToActionResult(_roomService.GetDayAvailability(id, date ?? DateTime.UtcNow.Date));
+    }
 }

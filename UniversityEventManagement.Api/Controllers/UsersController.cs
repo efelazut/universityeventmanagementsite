@@ -22,9 +22,9 @@ public class UsersController : ControllerBase
     public ActionResult<UserProfileResponse> GetCurrentUser()
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        return string.IsNullOrWhiteSpace(email)
-            ? Unauthorized()
-            : this.ToActionResult(_userService.GetCurrentUser(email));
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        return this.ToActionResult(_userService.GetCurrentUser(currentUserId, email));
     }
 
     [Authorize]
@@ -32,9 +32,15 @@ public class UsersController : ControllerBase
     public ActionResult<UserEventActivityResponse> GetCurrentUserEvents()
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        return string.IsNullOrWhiteSpace(email)
-            ? Unauthorized()
-            : this.ToActionResult(_userService.GetCurrentUserEvents(email));
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        return this.ToActionResult(_userService.GetCurrentUserEvents(currentUserId, email));
+    }
+
+    [HttpGet("{id:int}/organizer-profile")]
+    public ActionResult<OrganizerProfileResponse> GetOrganizerProfile(int id)
+    {
+        return this.ToActionResult(_userService.GetOrganizerProfile(id));
     }
 
     [HttpGet]

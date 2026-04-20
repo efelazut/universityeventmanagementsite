@@ -1,43 +1,115 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bars } from "../components/Charts";
 import { EmptyState } from "../components/EmptyState";
 import { SectionCard } from "../components/SectionCard";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { fetchRoomAvailability, fetchRoomPopularity, fetchRooms } from "../services/resourceService";
+import { fetchRoomAvailability, fetchRoomDayAvailability, fetchRooms } from "../services/resourceService";
 
-function getStatusTone(statusLabel) {
-  if (statusLabel === "Boş") return "tone-teal";
-  if (statusLabel === "Dolu") return "tone-rose";
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatSlotLabel(slot) {
+  return `${slot.startTime} - ${slot.endTime}`;
+}
+
+function getSummaryTone(label = "") {
+  const normalized = String(label).toLocaleLowerCase("tr-TR");
+  if (normalized.includes("tamamen boş")) return "tone-teal";
+  if (normalized.includes("kısmi")) return "tone-gold";
+  if (normalized.includes("rezervasyon")) return "tone-dark";
   return "tone-blue";
+}
+
+function normalizeRooms(data) {
+  return Array.isArray(data)
+    ? data.filter((room) => room && typeof room.id === "number" && room.name)
+    : [];
+}
+
+function normalizeAvailability(data) {
+  return Array.isArray(data)
+    ? data.filter((item) => item && typeof item.roomId === "number")
+    : [];
+}
+
+function normalizeSlots(data) {
+  return Array.isArray(data?.slots) ? data.slots.filter((slot) => slot?.startTime && slot?.endTime) : [];
 }
 
 export function RoomsPage() {
   const { apiBaseUrl, user } = useAuth();
-  const rooms = useAsyncData(() => fetchRooms(apiBaseUrl), [apiBaseUrl]);
-  const availability = useAsyncData(() => fetchRoomAvailability(apiBaseUrl), [apiBaseUrl]);
-  const popularity = useAsyncData(() => fetchRoomPopularity(apiBaseUrl), [apiBaseUrl]);
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(formatDateInput(new Date()));
+  const roomsQuery = useAsyncData(() => fetchRooms(apiBaseUrl), [apiBaseUrl]);
+  const availabilityQuery = useAsyncData(() => fetchRoomAvailability(apiBaseUrl), [apiBaseUrl]);
+  const dayAvailabilityQuery = useAsyncData(
+    () => (selectedRoomId ? fetchRoomDayAvailability(selectedRoomId, selectedDate, apiBaseUrl) : Promise.resolve(null)),
+    [selectedRoomId, selectedDate, apiBaseUrl]
+  );
 
-  if (rooms.loading || availability.loading || popularity.loading) {
-    return <div className="loading-state loading-state-large">Salon verileri hazırlanıyor...</div>;
+  const rooms = useMemo(() => normalizeRooms(roomsQuery.data), [roomsQuery.data]);
+  const availability = useMemo(() => normalizeAvailability(availabilityQuery.data), [availabilityQuery.data]);
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) || null;
+  const slotList = useMemo(() => normalizeSlots(dayAvailabilityQuery.data), [dayAvailabilityQuery.data]);
+  const selectedRoomAvailability = dayAvailabilityQuery.data && typeof dayAvailabilityQuery.data === "object"
+    ? dayAvailabilityQuery.data
+    : null;
+  const availableToday = availability.filter((item) => String(item.statusLabel || "").toLocaleLowerCase("tr-TR").includes("tamamen boş")).length;
+  const partiallyBusy = availability.filter((item) => String(item.statusLabel || "").toLocaleLowerCase("tr-TR").includes("kısmi")).length;
+
+  useEffect(() => {
+    if (!rooms.length) {
+      setSelectedRoomId(null);
+      return;
+    }
+
+    setSelectedRoomId((current) => (current && rooms.some((room) => room.id === current) ? current : rooms[0].id));
+  }, [rooms]);
+
+  const availabilityMap = useMemo(
+    () =>
+      Object.fromEntries(
+        availability.map((item) => [
+          item.roomId,
+          {
+            label: item.statusLabel || "Bugün özet yok",
+            nextEventTitle: item.nextEventTitle,
+            nextOccupiedStartDate: item.nextOccupiedStartDate
+          }
+        ])
+      ),
+    [availability]
+  );
+
+  if (roomsQuery.loading || availabilityQuery.loading) {
+    return <div className="loading-state loading-state-large">Salon görünümü hazırlanıyor...</div>;
   }
 
-  if (rooms.error || availability.error || popularity.error) {
-    return <div className="error-panel">{rooms.error || availability.error || popularity.error}</div>;
+  if (roomsQuery.error || availabilityQuery.error) {
+    return (
+      <SectionCard title="Salon görünümü şu anda açılmıyor" description="Sistemi boş ekranda bırakmadan temel durumu koruyoruz.">
+        <EmptyState
+          title="Salon verisi alınamadı."
+          description={roomsQuery.error || availabilityQuery.error || "Biraz sonra tekrar deneyebilirsiniz."}
+        />
+      </SectionCard>
+    );
   }
-
-  const availableCount = availability.data.filter((item) => item.statusLabel === "Boş").length;
-  const busyCount = availability.data.filter((item) => item.statusLabel === "Dolu").length;
 
   return (
     <div className="page-stack">
-      <section className="page-hero">
+      <section className="page-hero room-hero">
         <div>
-          <p className="eyebrow">Salonlar</p>
-          <h1>Salon yönetimini daha anlaşılır görün.</h1>
+          <p className="eyebrow">Salon Planlama</p>
+          <h1>Alan uygunluğunu saat çizelgesi üzerinden güvenle yönetin.</h1>
           <p>
-            Envanter, uygunluk ve kullanım yoğunluğu artık aynı sayfada daha güçlü bir görsel hiyerarşi ile sunuluyor.
+            Salon kartları kısa özet verir; seçtiğiniz anda gün bazlı ve saat bloklu uygunluk paneli açılır.
           </p>
         </div>
         <div className="hero-actions">
@@ -46,102 +118,120 @@ export function RoomsPage() {
               Yeni salon ekle
             </Link>
           ) : null}
-          <div className="status-panel">
-            <strong>{rooms.data.length} salon</strong>
-            <span>Boş ve dolu alanları hızlıca ayırt etmek için sade ama güçlü bir görünüm sunulur.</span>
+          <div className="status-panel status-panel-wide">
+            <strong>{rooms.length} salon aktif</strong>
+            <span>Bugünkü özet, seçili tarih ve saat blokları aynı akış içinde görünür.</span>
           </div>
         </div>
       </section>
 
       <div className="stat-grid">
-        <StatCard title="Toplam salon" value={rooms.data.length} accent="teal" subtitle="Sistemde tanımlı alanlar" />
-        <StatCard title="Şu an boş" value={availableCount} accent="blue" subtitle="Planlamaya hazır alanlar" />
-        <StatCard title="Şu an dolu" value={busyCount} accent="orange" subtitle="Kullanımda olan alanlar" />
-        <StatCard title="Yoğunluk verisi" value={popularity.data.length} accent="rose" subtitle="Kullanım analizi olan salonlar" />
+        <StatCard title="Bugün tamamen boş" value={availableToday} accent="teal" subtitle="Yeni planlamaya açık alanlar" />
+        <StatCard title="Kısmi yoğun" value={partiallyBusy} accent="blue" subtitle="Saat bazlı doluluk görülen salonlar" />
+        <StatCard title="Toplam salon" value={rooms.length} accent="orange" subtitle="Envanterdeki tüm alanlar" />
+        <StatCard title="Seçili görünüm" value={selectedRoom ? selectedRoom.name : "Salon seçin"} accent="rose" subtitle="Availability paneli" />
       </div>
 
-      <div className="two-column">
-        <SectionCard title="Salon uygunluğu" description="Anlık durum, sonraki plan ve bina bilgisi aynı satırda gösterilir.">
-          <div className="stack-list">
-            {availability.data.length ? (
-              availability.data.map((room) => (
-                <div key={room.roomId} className="list-row room-row">
-                  <div>
-                    <strong>{room.roomName}</strong>
-                    <span>{room.building}</span>
+      <SectionCard title="Salon özeti" description="Kartlar stabildir; veri eksik olsa bile sayfa çökmez.">
+        {rooms.length ? (
+          <div className="room-card-grid">
+            {rooms.map((room) => {
+              const roomStatus = availabilityMap[room.id];
+
+              return (
+                <button
+                  key={room.id}
+                  type="button"
+                  className={`room-summary-card ${selectedRoomId === room.id ? "is-active" : ""}`}
+                  onClick={() => setSelectedRoomId(room.id)}
+                >
+                  <div className="room-summary-head">
+                    <div>
+                      <strong>{room.name}</strong>
+                      <span>{room.building || "Kampüs alanı"}</span>
+                    </div>
+                    <span className={`pill ${getSummaryTone(roomStatus?.label)}`}>{room.type || "Salon"}</span>
                   </div>
-                  <div className="room-status-box">
-                    <span className={`pill ${getStatusTone(room.statusLabel)}`}>{room.statusLabel}</span>
+
+                  <p>{room.description || "Bu salon için kısa açıklama daha sonra güncellenecek."}</p>
+
+                  <div className="room-summary-meta">
+                    <div>
+                      <span>Kapasite</span>
+                      <strong>{room.capacity || 0}</strong>
+                    </div>
+                    <div>
+                      <span>Bugün</span>
+                      <strong>{roomStatus?.label || "Bugün özet yok"}</strong>
+                    </div>
+                  </div>
+
+                  {roomStatus?.nextOccupiedStartDate ? (
                     <small>
-                      {room.nextOccupiedStartDate
-                        ? `${room.nextEventTitle || "Planlı etkinlik"} • ${new Date(room.nextOccupiedStartDate).toLocaleString("tr-TR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}`
-                        : "Yakın takvim boş"}
+                      Sıradaki rezervasyon:{" "}
+                      {new Date(roomStatus.nextOccupiedStartDate).toLocaleString("tr-TR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
                     </small>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyState title="Salon uygunluk verisi bulunamadı." description="Takvim verisi geldikçe bu alan otomatik olarak dolacaktır." />
-            )}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Salon kullanım yoğunluğu" description="Hangi salonların daha fazla planlandığını görsel olarak izleyin.">
-          {popularity.data.length ? (
-            <Bars data={popularity.data} xKey="roomName" dataKey="eventCount" />
-          ) : (
-            <EmptyState title="Yoğunluk grafiği için veri yok." description="Etkinlik kayıtları arttığında grafik burada görünür." />
-          )}
-        </SectionCard>
-      </div>
-
-      <SectionCard title="Salon envanteri" description="Kapasite, tür ve güncel durum bilgilerini sade kart düzeninde inceleyin.">
-        {rooms.data.length ? (
-          <div className="event-grid">
-            {rooms.data
-              .sort((left, right) => Number(right.isAvailable) - Number(left.isAvailable))
-              .map((room) => {
-                const availabilityItem = availability.data.find((item) => item.roomId === room.id);
-
-                return (
-                  <article key={room.id} className="event-card room-card">
-                    <div className="badge-row">
-                      <span className="pill tone-dark">{room.type}</span>
-                      <span className={`pill ${availabilityItem ? getStatusTone(availabilityItem.statusLabel) : "tone-blue"}`}>
-                        {availabilityItem?.statusLabel || "Durum yok"}
-                      </span>
-                    </div>
-                    <h3>{room.name}</h3>
-                    <p>{room.building}</p>
-                    <p>{room.description}</p>
-                    <div className="event-info-grid">
-                      <div>
-                        <span>Kapasite</span>
-                        <strong>{room.capacity}</strong>
-                      </div>
-                      <div>
-                        <span>Durum</span>
-                        <strong>{availabilityItem?.statusLabel || (room.isAvailable ? "Boş" : "Dolu")}</strong>
-                      </div>
-                    </div>
-                    {user?.role === "Admin" ? (
-                      <div className="card-actions">
-                        <Link className="ghost-button link-button" to={`/rooms/${room.id}/edit`}>
-                          Düzenle
-                        </Link>
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
+                  ) : (
+                    <small>Bugün için yeni rezervasyonlara açık görünüyor.</small>
+                  )}
+                </button>
+              );
+            })}
           </div>
         ) : (
-          <EmptyState title="Henüz salon tanımı bulunmuyor." description="Yeni salon eklendiğinde envanter burada listelenecek." />
+          <EmptyState title="Henüz salon tanımı bulunmuyor." description="Yeni salon eklendiğinde planlama kartları burada görünür." />
+        )}
+      </SectionCard>
+
+      <SectionCard title="Availability paneli" description="Bir salon seçin, tarih belirleyin ve saat bazlı uygunluğu inceleyin.">
+        {selectedRoom ? (
+          <div className="room-availability-panel">
+            <div className="room-availability-top">
+              <div>
+                <strong>{selectedRoom.name}</strong>
+                <span>{selectedRoom.building || "Kampüs"} • {selectedRoom.type || "Salon"}</span>
+              </div>
+              <label className="availability-date-picker">
+                Gün seçin
+                <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+              </label>
+            </div>
+
+            {dayAvailabilityQuery.loading ? (
+              <div className="loading-state">Saat blokları hazırlanıyor...</div>
+            ) : dayAvailabilityQuery.error ? (
+              <div className="notice-box">
+                Seçili gün için salon programı yüklenemedi. Başka bir tarih seçebilir veya biraz sonra tekrar deneyebilirsiniz.
+              </div>
+            ) : slotList.length ? (
+              <>
+                <div className="room-slot-grid">
+                  {slotList.map((slot) => (
+                    <div key={`${slot.startTime}-${slot.endTime}`} className={`room-slot ${slot.isAvailable ? "is-free" : "is-busy"}`}>
+                      <strong>{formatSlotLabel(slot)}</strong>
+                      <span>{slot.label || (slot.isAvailable ? "Uygun" : "Dolu")}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {selectedRoomAvailability && !selectedRoomAvailability.hasAvailability ? (
+                  <div className="notice-box">Bu tarih için uygun zaman aralığı bulunmuyor.</div>
+                ) : null}
+              </>
+            ) : (
+              <EmptyState
+                title="Seçili tarih için saat bloğu bulunamadı."
+                description="Başka bir tarih deneyebilir veya salon kartlarından farklı bir alan seçebilirsiniz."
+              />
+            )}
+          </div>
+        ) : (
+          <EmptyState title="Bir salon seçin." description="Yukarıdaki kartlardan birine tıkladığınızda uygunluk paneli burada açılır." />
         )}
       </SectionCard>
     </div>

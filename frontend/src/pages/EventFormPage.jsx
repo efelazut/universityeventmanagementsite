@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { ImageUploadField } from "../components/ImageUploadField";
 import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
-import { createEvent, fetchClubs, fetchEventById, fetchEvents, fetchRooms, updateEvent } from "../services/resourceService";
+import { createEvent, deleteEvent, fetchClubs, fetchEventById, fetchEvents, fetchRooms, updateEvent, uploadImage } from "../services/resourceService";
 
 const hourOptions = Array.from({ length: 28 }, (_, index) => {
   const hour = Math.floor(index / 2) + 9;
@@ -14,7 +16,7 @@ const createEmptyForm = () => ({
   title: "",
   description: "",
   category: "Teknoloji",
-  campus: "Merkez Kampus",
+  campus: "Merkez Kampüs",
   format: "Fiziksel",
   imageUrl: "",
   locationDetails: "",
@@ -47,6 +49,20 @@ function toIso(datePart, timePart) {
   return new Date(`${datePart}T${timePart}:00`).toISOString();
 }
 
+function validateImageFile(file) {
+  if (!file) return "";
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowedTypes.includes(file.type)) {
+    return "Yalnızca JPG, PNG veya WEBP dosyaları yüklenebilir.";
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return "Görsel boyutu 5 MB sınırını aşamaz.";
+  }
+
+  return "";
+}
+
 export function EventFormPage({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -55,8 +71,13 @@ export function EventFormPage({ mode }) {
   const [clubs, setClubs] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageError, setImageError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -64,9 +85,9 @@ export function EventFormPage({ mode }) {
     const load = async () => {
       try {
         const [clubList, roomList, eventList] = await Promise.all([fetchClubs(apiBaseUrl), fetchRooms(apiBaseUrl), fetchEvents(apiBaseUrl)]);
-        setClubs(clubList);
-        setRooms(roomList);
-        setAllEvents(eventList);
+        setClubs(Array.isArray(clubList) ? clubList : []);
+        setRooms(Array.isArray(roomList) ? roomList : []);
+        setAllEvents(Array.isArray(eventList) ? eventList : []);
 
         if (mode === "edit") {
           const data = await fetchEventById(id, apiBaseUrl);
@@ -76,7 +97,7 @@ export function EventFormPage({ mode }) {
             title: data.title || "",
             description: data.description || "",
             category: data.category || "Teknoloji",
-            campus: data.campus || "Merkez Kampus",
+            campus: data.campus || "Merkez Kampüs",
             format: data.format || "Fiziksel",
             imageUrl: data.imageUrl || "",
             locationDetails: data.locationDetails || "",
@@ -96,6 +117,7 @@ export function EventFormPage({ mode }) {
             status: data.status || "Upcoming",
             actualAttendanceCount: data.actualAttendanceCount || 0
           });
+          setImagePreview(data.imageUrl || "");
         } else if (user?.role === "ClubManager" && user?.clubId) {
           setForm((prev) => ({ ...prev, clubId: String(user.clubId) }));
         }
@@ -109,7 +131,7 @@ export function EventFormPage({ mode }) {
     load();
   }, [apiBaseUrl, id, mode, user]);
 
-  const title = useMemo(() => (mode === "edit" ? "Etkinlik Düzenle" : "Yeni Etkinlik Oluştur"), [mode]);
+  const title = useMemo(() => (mode === "edit" ? "Etkinliği Düzenle" : "Yeni Etkinlik"), [mode]);
   const availableClubs = user?.role === "ClubManager" && user?.clubId ? clubs.filter((club) => club.id === user.clubId) : clubs;
   const startIso = form.startDateOnly && form.startTime ? toIso(form.startDateOnly, form.startTime) : null;
   const endIso = form.endDateOnly && form.endTime ? toIso(form.endDateOnly, form.endTime) : null;
@@ -118,7 +140,10 @@ export function EventFormPage({ mode }) {
     if (!form.roomId || !startIso || !endIso) return null;
     return allEvents.find((event) => {
       if (mode === "edit" && event.id === Number(id)) return false;
-      return String(event.roomId) === form.roomId && new Date(event.startDate) < new Date(endIso) && new Date(event.endDate) > new Date(startIso) && event.computedStatus !== "Cancelled";
+      return String(event.roomId) === form.roomId &&
+        new Date(event.startDate) < new Date(endIso) &&
+        new Date(event.endDate) > new Date(startIso) &&
+        event.computedStatus !== "Cancelled";
     });
   }, [allEvents, endIso, form.roomId, id, mode, startIso]);
 
@@ -131,7 +156,27 @@ export function EventFormPage({ mode }) {
     if (new Date(endIso) <= new Date(startIso)) return "Bitiş tarihi ve saati başlangıçtan sonra olmalıdır.";
     if (Number(form.capacity) <= 0) return "Kapasite sıfırdan büyük olmalıdır.";
     if (conflict) return `Seçili salon bu aralıkta dolu: ${conflict.title}`;
+    if (imageError) return imageError;
     return "";
+  };
+
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    const validation = validateImageFile(file);
+    setImageError(validation);
+    if (validation) {
+      setImageFile(null);
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(file ? URL.createObjectURL(file) : form.imageUrl);
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImageError("");
+    setImagePreview(form.imageUrl || "");
   };
 
   const handleSubmit = async (event) => {
@@ -148,13 +193,17 @@ export function EventFormPage({ mode }) {
     setSuccess("");
 
     try {
+      const uploadedImage = imageFile
+        ? await uploadImage(imageFile, "events", user.token, apiBaseUrl)
+        : null;
+
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category,
         campus: form.campus,
         format: form.format,
-        imageUrl: form.imageUrl.trim(),
+        imageUrl: uploadedImage?.publicUrl || form.imageUrl.trim(),
         locationDetails: form.locationDetails.trim(),
         clubId: user?.role === "ClubManager" ? user.clubId : Number(form.clubId),
         roomId: Number(form.roomId),
@@ -171,7 +220,10 @@ export function EventFormPage({ mode }) {
         actualAttendanceCount: Number(form.actualAttendanceCount)
       };
 
-      const response = mode === "edit" ? await updateEvent(id, payload, user.token, apiBaseUrl) : await createEvent(payload, user.token, apiBaseUrl);
+      const response = mode === "edit"
+        ? await updateEvent(id, payload, user.token, apiBaseUrl)
+        : await createEvent(payload, user.token, apiBaseUrl);
+
       setSuccess(mode === "edit" ? "Etkinlik güncellendi." : "Etkinlik oluşturuldu.");
       setTimeout(() => navigate(`/events/${response.id || id}`), 600);
     } catch (err) {
@@ -191,11 +243,23 @@ export function EventFormPage({ mode }) {
         <div>
           <p className="eyebrow">Etkinlik Yönetimi</p>
           <h1>{title}</h1>
-          <p>Tarih ve saat seçimleri daha güvenli, salon çakışmaları ise form içinde net biçimde görünür.</p>
+          <p>Tarih, saat, salon ve görsel ayarlarını tek ekranda yönetin.</p>
         </div>
       </section>
 
-      <SectionCard title={title} action={<Link to="/events" className="ghost-button link-button">Etkinliklere Dön</Link>}>
+      <SectionCard
+        title={title}
+        action={
+          <div className="inline-actions">
+            {mode === "edit" ? (
+              <button className="ghost-button destructive-button" type="button" onClick={() => setDeleteDialogOpen(true)} disabled={deleting}>
+                {deleting ? "Siliniyor..." : "Etkinliği Sil"}
+              </button>
+            ) : null}
+            <Link to="/events" className="ghost-button link-button">Etkinliklere Dön</Link>
+          </div>
+        }
+      >
         <form className="management-form" onSubmit={handleSubmit}>
           <div className="form-grid two-column">
             <label>
@@ -214,14 +278,32 @@ export function EventFormPage({ mode }) {
           </label>
 
           <div className="form-grid two-column">
-            <label>
-              Görsel URL
-              <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="Büyük kapak görseli bağlantısı" />
-            </label>
-            <label>
-              Kampüs / Konum etiketi
-              <input value={form.campus} onChange={(e) => setForm({ ...form, campus: e.target.value })} />
-            </label>
+            <ImageUploadField
+              label="Etkinlik görseli"
+              hint="Kartlarda ve detay sayfasında öne çıkar."
+              inputId="event-image-upload"
+              previewUrl={imagePreview}
+              onFileChange={handleImageChange}
+              onClear={clearImage}
+              error={imageError}
+            />
+            <div className="management-form">
+              <label>
+                Görsel URL
+                <input
+                  value={form.imageUrl}
+                  onChange={(e) => {
+                    setForm({ ...form, imageUrl: e.target.value });
+                    if (!imageFile) setImagePreview(e.target.value);
+                  }}
+                  placeholder="Opsiyonel yedek bağlantı"
+                />
+              </label>
+              <label>
+                Kampüs / Konum etiketi
+                <input value={form.campus} onChange={(e) => setForm({ ...form, campus: e.target.value })} />
+              </label>
+            </div>
           </div>
 
           <div className="form-grid two-column">
@@ -278,7 +360,7 @@ export function EventFormPage({ mode }) {
             </label>
             <label>
               Yer detayları
-              <input value={form.locationDetails} onChange={(e) => setForm({ ...form, locationDetails: e.target.value })} placeholder="Salon adı, fuaye, Zoom bağlantı bilgisi vb." />
+              <input value={form.locationDetails} onChange={(e) => setForm({ ...form, locationDetails: e.target.value })} placeholder="Salon, fuaye veya bağlantı bilgisi" />
             </label>
           </div>
 
@@ -289,7 +371,7 @@ export function EventFormPage({ mode }) {
             </label>
             <label className="checkbox-row">
               <input type="checkbox" checked={form.requiresApproval} onChange={(e) => setForm({ ...form, requiresApproval: e.target.checked })} />
-              Başvuru önce onaylansın
+              Başvuru onaylansın
             </label>
             <label className="checkbox-row">
               <input type="checkbox" checked={form.isFree} onChange={(e) => setForm({ ...form, isFree: e.target.checked })} />
@@ -309,7 +391,7 @@ export function EventFormPage({ mode }) {
               Seçili saat aralığında bu salon dolu. Çakışan etkinlik: <strong>{conflict.title}</strong>
             </div>
           ) : startIso && endIso && form.roomId ? (
-            <div className="notice-box">Seçili salon ve saat aralığında görünür bir çakışma bulunmuyor.</div>
+            <div className="notice-box">Seçili aralık için görünür bir çakışma bulunmuyor.</div>
           ) : null}
 
           {error ? <div className="error-panel">{error}</div> : null}
@@ -322,6 +404,29 @@ export function EventFormPage({ mode }) {
           </div>
         </form>
       </SectionCard>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        tone="danger"
+        title="Etkinlik silinsin mi?"
+        description="Bu işlem geri alınamaz. Etkinliğe bağlı kayıtlar ve yorumlar da silinir."
+        confirmLabel="Etkinliği Sil"
+        loading={deleting}
+        onCancel={() => setDeleteDialogOpen(false)}
+        onConfirm={async () => {
+          setDeleting(true);
+          setError("");
+          try {
+            await deleteEvent(id, user.token, apiBaseUrl);
+            navigate("/events", { replace: true, state: { notice: "Etkinlik silindi." } });
+          } catch (err) {
+            setError(err.message || "Etkinlik silinemedi.");
+          } finally {
+            setDeleting(false);
+            setDeleteDialogOpen(false);
+          }
+        }}
+      />
     </div>
   );
 }

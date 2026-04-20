@@ -17,12 +17,14 @@ public class ClubsController : ControllerBase
         _clubService = clubService;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public ActionResult<IEnumerable<ClubResponse>> GetAll()
     {
         return Ok(_clubService.GetAll());
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public ActionResult<ClubResponse> GetById(int id)
     {
@@ -41,18 +43,39 @@ public class ClubsController : ControllerBase
         return this.ToActionResult(_clubService.Update(id, request));
     }
 
+    [Authorize(Roles = "Admin,ClubManager")]
     [HttpDelete("{id:int}")]
     public IActionResult Delete(int id)
     {
-        return this.ToActionResult(_clubService.Delete(id));
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var role = User.FindFirstValue(ClaimTypes.Role);
+
+        if (!int.TryParse(userIdClaim, out var currentUserId) || string.IsNullOrWhiteSpace(role))
+        {
+            return Unauthorized();
+        }
+
+        var result = _clubService.Delete(id, currentUserId, role);
+        return result.Status switch
+        {
+            ServiceResultStatus.Ok => NoContent(),
+            ServiceResultStatus.BadRequest => BadRequest(result.Message),
+            ServiceResultStatus.NotFound => NotFound(result.Message),
+            ServiceResultStatus.Conflict => Conflict(result.Message),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Message),
+            ServiceResultStatus.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError)
+        };
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}/members")]
     public ActionResult<IReadOnlyList<ClubMembershipResponse>> GetMembers(int id)
     {
         return this.ToActionResult(_clubService.GetMembers(id));
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}/events")]
     public ActionResult<IReadOnlyList<EventResponse>> GetEvents(int id)
     {
@@ -62,6 +85,7 @@ public class ClubsController : ControllerBase
             : this.ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}/statistics")]
     public ActionResult<ClubStatisticsResponse> GetStatistics(int id)
     {
@@ -100,11 +124,16 @@ public class ClubsController : ControllerBase
             : Unauthorized();
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ClubManager")]
     [HttpPost("{id:int}/president/{userId:int}")]
     public ActionResult<ClubResponse> AssignPresident(int id, int userId)
     {
-        return this.ToActionResult(_clubService.AssignPresident(id, userId));
+        var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserRole = User.FindFirstValue(ClaimTypes.Role);
+
+        return int.TryParse(currentUserIdClaim, out var currentUserId) && !string.IsNullOrWhiteSpace(currentUserRole)
+            ? this.ToActionResult(_clubService.AssignPresident(id, userId, currentUserId, currentUserRole))
+            : Unauthorized();
     }
 
     private EventResponse SanitizeEvent(EventResponse response)

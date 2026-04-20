@@ -11,4 +11,5 @@ public interface IRoomService
     ServiceResult Delete(int id);
     IReadOnlyList<RoomAvailabilityResponse> GetAvailability();
     IReadOnlyList<RoomPopularityResponse> GetPopularity();
+    ServiceResult<RoomDayAvailabilityResponse> GetDayAvailability(int roomId, DateTime date);
 }

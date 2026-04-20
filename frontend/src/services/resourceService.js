@@ -32,6 +32,8 @@ export const createClub = (payload, token, baseUrl) =>
   apiRequest("/api/Clubs", { method: "POST", body: payload, token, baseUrl });
 export const updateClub = (id, payload, token, baseUrl) =>
   apiRequest(`/api/Clubs/${id}`, { method: "PUT", body: payload, token, baseUrl });
+export const deleteClub = (id, token, baseUrl) =>
+  apiRequest(`/api/Clubs/${id}`, { method: "DELETE", token, baseUrl });
 export const joinClub = (id, token, baseUrl) =>
   apiRequest(`/api/Clubs/${id}/join`, { method: "POST", token, baseUrl });
 export const assignClubOfficer = (id, payload, token, baseUrl) =>
@@ -45,13 +47,22 @@ export const fetchRooms = (baseUrl) => apiRequest("/api/Rooms", { baseUrl });
 export const fetchRoomById = (id, baseUrl) => apiRequest(`/api/Rooms/${id}`, { baseUrl });
 export const fetchRoomAvailability = (baseUrl) => apiRequest("/api/Rooms/availability", { baseUrl });
 export const fetchRoomPopularity = (baseUrl) => apiRequest("/api/Rooms/popularity", { baseUrl });
+export const fetchRoomDayAvailability = (id, date, baseUrl) => apiRequest(`/api/Rooms/${id}/availability?date=${date}`, { baseUrl });
 export const createRoom = (payload, token, baseUrl) =>
   apiRequest("/api/Rooms", { method: "POST", body: payload, token, baseUrl });
 export const updateRoom = (id, payload, token, baseUrl) =>
   apiRequest(`/api/Rooms/${id}`, { method: "PUT", body: payload, token, baseUrl });
 
+export const uploadImage = (file, category, token, baseUrl) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("category", category);
+  return apiRequest("/api/Uploads/image", { method: "POST", body: formData, token, baseUrl });
+};
+
 export const fetchMyProfile = (token, baseUrl) => apiRequest("/api/Users/me", { token, baseUrl });
 export const fetchMyEvents = (token, baseUrl) => apiRequest("/api/Users/me/events", { token, baseUrl });
+export const fetchOrganizerProfile = (id, baseUrl) => apiRequest(`/api/Users/${id}/organizer-profile`, { baseUrl });
 
 export const fetchEventReviews = (eventId, baseUrl) => apiRequest(`/api/events/${eventId}/reviews`, { baseUrl });
 export const createEventReview = (eventId, payload, token, baseUrl) =>

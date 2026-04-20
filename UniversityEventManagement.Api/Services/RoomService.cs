@@ -136,6 +136,14 @@ public class RoomService : IRoomService
                         : room.IsAvailable
                             ? "Bos"
                             : "Dolu";
+                var todayReservations = events.Count(@event => @event.RoomId == room.Id && @event.StartDate.Date == now.Date);
+                var dailySummary = todayReservations == 0
+                    ? "Bugün tamamen boş"
+                    : todayReservations == 1
+                        ? "Bugün 1 rezervasyon"
+                        : todayReservations <= 3
+                            ? $"Bugün {todayReservations} rezervasyon"
+                            : "Bugün kısmi yoğun";
 
                 return new RoomAvailabilityResponse
                 {
@@ -144,7 +152,7 @@ public class RoomService : IRoomService
                     Building = room.Building,
                     IsAvailable = room.IsAvailable && nextEvent is null && activeEvent is null,
                     NextOccupiedStartDate = nextEvent?.StartDate,
-                    StatusLabel = statusLabel,
+                    StatusLabel = dailySummary,
                     NextEventTitle = activeEvent?.Title ?? nextEvent?.Title
                 };
             })
@@ -174,6 +182,49 @@ public class RoomService : IRoomService
             .OrderByDescending(item => item.EventCount)
             .ThenBy(item => item.RoomName)
             .ToList();
+    }
+
+    public ServiceResult<RoomDayAvailabilityResponse> GetDayAvailability(int roomId, DateTime date)
+    {
+        var room = _dbContext.Rooms.AsNoTracking().FirstOrDefault(item => item.Id == roomId);
+        if (room is null)
+        {
+            return ServiceResult<RoomDayAvailabilityResponse>.NotFound("Salon bulunamadı.");
+        }
+
+        var dayStart = date.Date;
+        var dayEnd = dayStart.AddDays(1);
+        var events = _dbContext.Events
+            .AsNoTracking()
+            .Where(@event => @event.RoomId == roomId && @event.StartDate < dayEnd && @event.EndDate > dayStart)
+            .OrderBy(@event => @event.StartDate)
+            .ToList();
+
+        var slots = Enumerable.Range(9, 10)
+            .Select(hour =>
+            {
+                var slotStart = dayStart.AddHours(hour);
+                var slotEnd = slotStart.AddHours(1);
+                var occupyingEvent = events.FirstOrDefault(@event => @event.StartDate < slotEnd && @event.EndDate > slotStart);
+                return new RoomTimeSlotResponse
+                {
+                    StartTime = slotStart.ToString("HH:mm"),
+                    EndTime = slotEnd.ToString("HH:mm"),
+                    IsAvailable = occupyingEvent is null,
+                    Label = occupyingEvent?.Title ?? "Uygun"
+                };
+            })
+            .ToList();
+
+        return ServiceResult<RoomDayAvailabilityResponse>.Ok(new RoomDayAvailabilityResponse
+        {
+            Id = room.Id,
+            RoomId = room.Id,
+            RoomName = room.Name,
+            Date = dayStart,
+            HasAvailability = slots.Any(slot => slot.IsAvailable),
+            Slots = slots
+        });
     }
 
     private static RoomResponse Map(Room room) => new()

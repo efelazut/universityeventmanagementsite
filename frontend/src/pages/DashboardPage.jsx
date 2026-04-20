@@ -9,9 +9,9 @@ import { fetchClubStats, fetchDashboard, fetchEventStats, fetchMyStats, fetchRoo
 import { fetchMyEvents, fetchUpcomingEvents } from "../services/resourceService";
 
 function getRoleTitle(role) {
-  if (role === "Admin") return "Yönetim paneli";
-  if (role === "ClubManager") return "Kulüp yönetici paneli";
-  return "Öğrenci paneli";
+  if (role === "Admin") return "Yönetim Paneli";
+  if (role === "ClubManager") return "Kulüp Paneli";
+  return "Panel";
 }
 
 export function DashboardPage() {
@@ -50,93 +50,77 @@ export function DashboardPage() {
       <section className="page-hero">
         <div>
           <p className="eyebrow">{getRoleTitle(user.role)}</p>
-          <h1>{user.fullName} için daha net bir kontrol yüzeyi</h1>
-          <p>
-            Rolünüze göre en önemli sayı, aksiyon ve görünür planları sade ama güçlü bir düzen içinde sunuyoruz.
-          </p>
+          <h1>{user.fullName} için özet görünüm</h1>
+          <p>Önemli sayılar, planlar ve karar sinyalleri burada.</p>
         </div>
         <div className="status-panel status-panel-wide">
-          <strong>Bugün için odak</strong>
-          <span>
-            {isManagement
-              ? "Operasyon, doluluk ve salon yükünü birlikte izleyin."
-              : "Kayıtlarınızı, yaklaşan etkinlikleri ve katılım geçmişinizi takip edin."}
-          </span>
+          <strong>Bugün</strong>
+          <span>{isManagement ? "Operasyon ve doluluk" : "Kayıtlar ve yaklaşan planlar"}</span>
         </div>
       </section>
 
       {isManagement ? (
         <>
           <SectionCard
-            title="Yönetim kısayolları"
-            description="Günlük operasyon akışında en sık kullanılan giriş noktaları."
+            title="Kısayollar"
+            description="Sık kullanılan işlemler."
             action={
               <div className="inline-actions">
-                {user.role === "Admin" ? (
-                  <Link to="/clubs/new" className="ghost-button link-button">
-                    Kulüp oluştur
-                  </Link>
-                ) : null}
-                {user.role === "Admin" ? (
-                  <Link to="/rooms/new" className="ghost-button link-button">
-                    Salon ekle
-                  </Link>
-                ) : null}
-                <Link to="/events/new" className="primary-button link-button">
-                  Etkinlik oluştur
-                </Link>
+                {user.role === "Admin" ? <Link to="/clubs/new" className="ghost-button link-button">Kulüp Oluştur</Link> : null}
+                {user.role === "Admin" ? <Link to="/rooms/new" className="ghost-button link-button">Salon Ekle</Link> : null}
+                <Link to="/events/new" className="primary-button link-button">Etkinlik Oluştur</Link>
               </div>
             }
           >
             <div className="insight-grid">
               <div className="insight-card">
-                <strong>Hızlı içerik üretimi</strong>
-                <span>Kulüp, salon ve etkinlik işlemlerine tek karttan erişebilirsiniz.</span>
+                <strong>Kulüpler</strong>
+                <span>Yapıyı güncelleyin ve ekipleri yönetin.</span>
               </div>
               <div className="insight-card">
-                <strong>Sunuma hazır görünüm</strong>
-                <span>Öne çıkan metrikler ve grafikler karar anlatımını kolaylaştırır.</span>
+                <strong>Etkinlikler</strong>
+                <span>Takvimi canlı tutun.</span>
               </div>
               <div className="insight-card">
-                <strong>Operasyonel şeffaflık</strong>
-                <span>Doluluk, puan ve salon yükü birlikte izlenebilir.</span>
+                <strong>Salonlar</strong>
+                <span>Yoğunluğu hızlıca kontrol edin.</span>
               </div>
             </div>
           </SectionCard>
 
           <div className="stat-grid">
-            <StatCard title="Toplam etkinlik" value={dashboard.data.eventCount} accent="teal" subtitle="Sistemdeki tüm etkinlikler" />
-            <StatCard title="Yaklaşan etkinlik" value={dashboard.data.upcomingEventCount} accent="blue" subtitle="Planı devam edenler" />
-            <StatCard title="Toplam katılım" value={dashboard.data.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
+            <StatCard title="Toplam Etkinlik" value={dashboard.data.eventCount} accent="teal" subtitle="Sistem genelinde" />
+            <StatCard title="Yaklaşan" value={dashboard.data.upcomingEventCount} accent="blue" subtitle="Planlanan etkinlik" />
+            <StatCard title="Katılım" value={dashboard.data.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
             <StatCard
-              title="Ortalama puan"
+              title="Ortalama Puan"
               value={dashboard.data.averageRating ? dashboard.data.averageRating.toFixed(1) : "Yok"}
               accent="rose"
-              subtitle="Katılımcı değerlendirmeleri"
+              subtitle="Yorumlardan"
             />
           </div>
 
           <div className="two-column">
-            <SectionCard title="Kulüp etkinlik dağılımı" description="Hangi kulüpler daha aktif çalışıyor?">
+            <SectionCard title="Kulüp Durumu" description="Etkinlik üretimi.">
               <Bars data={clubStats.data} xKey="clubName" dataKey="eventCount" />
             </SectionCard>
-            <SectionCard title="Salon kullanım yoğunluğu" description="Planlama baskısı hangi alanlarda toplanıyor?">
+            <SectionCard title="Salon Yoğunluğu" description="Kullanım baskısı.">
               <Bars data={roomStats.data} xKey="roomName" dataKey="eventCount" />
             </SectionCard>
           </div>
 
-          <SectionCard title="Etkinlik performansı" description="Doluluk oranlarıyla etkinlik ilgisini daha rahat kıyaslayın.">
+          <SectionCard title="Etkinlik Özeti" description="Doluluk oranları.">
             <Bars data={eventStats.data} xKey="title" dataKey="fillRate" />
           </SectionCard>
         </>
       ) : (
         <>
           <div className="stat-grid">
-            <StatCard title="Kayıtlı etkinlik" value={myStats.data.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
-            <StatCard title="Katıldığım etkinlik" value={myStats.data.attendedEventCount} accent="blue" subtitle="İşlenmiş katılım" />
-            <StatCard title="Yaklaşan plan" value={myStats.data.upcomingEventCount} accent="orange" subtitle="Ajandadaki etkinlikler" />
+            <StatCard title="Kayıtlı Etkinlik" value={myStats.data.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
+            <StatCard title="Katıldığım" value={myStats.data.attendedEventCount} accent="blue" subtitle="İşlenmiş katılım" />
+            <StatCard title="Yaklaşan Plan" value={myStats.data.upcomingEventCount} accent="orange" subtitle="Ajandada" />
             <StatCard
-              title="Puan ortalamam"
+              title="Verdiğim Puan"
               value={myStats.data.reviewCount ? myStats.data.averageRatingGiven.toFixed(1) : "Yok"}
               accent="rose"
               subtitle={`${myStats.data.reviewCount} değerlendirme`}
@@ -144,7 +128,7 @@ export function DashboardPage() {
           </div>
 
           <div className="two-column">
-            <SectionCard title="Yaklaşan etkinlikler" description="Önümüzdeki dönemde öne çıkan planlar.">
+            <SectionCard title="Yaklaşan Etkinlikler" description="Sıradaki planlar.">
               <div className="stack-list">
                 {upcoming.data.slice(0, 5).length ? (
                   upcoming.data.slice(0, 5).map((item) => (
@@ -161,11 +145,11 @@ export function DashboardPage() {
                     </Link>
                   ))
                 ) : (
-                  <EmptyState title="Yaklaşan etkinlik yok." description="Yeni planlar oluştuğunda burada görünecek." />
+                  <EmptyState title="Yaklaşan etkinlik yok." description="Yeni planlar burada görünür." icon="Tk" />
                 )}
               </div>
             </SectionCard>
-            <SectionCard title="Etkinlik geçmişim" description="Katıldığınız etkinlikler tek alanda toplanır.">
+            <SectionCard title="Katılım Geçmişi" description="Tamamlanan etkinlikler.">
               <div className="stack-list">
                 {myEvents.data.attendedEvents.length ? (
                   myEvents.data.attendedEvents.map((item) => (
@@ -175,7 +159,7 @@ export function DashboardPage() {
                     </Link>
                   ))
                 ) : (
-                  <EmptyState title="Katılım geçmişi henüz boş." description="İşlenmiş katılımlarınız burada görünür." />
+                  <EmptyState title="Katılım geçmişi boş." description="İşlenmiş katılımlar burada görünür." icon="Kt" />
                 )}
               </div>
             </SectionCard>

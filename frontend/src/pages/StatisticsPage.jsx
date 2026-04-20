@@ -62,18 +62,15 @@ export function StatisticsPage() {
         <section className="page-hero">
           <div>
             <p className="eyebrow">Kişisel İstatistikler</p>
-            <h1>Etkinlik geçmişiniz artık daha anlamlı okunuyor.</h1>
-            <p>
-              Kayıtlarınız, katılım geçmişiniz ve yaklaşan planlarınız tek bir kişisel panel içinde daha net bir öncelik
-              sırasıyla sunulur.
-            </p>
+            <h1>Kişisel etkinlik özeti</h1>
+            <p>Kayıtlarınız, katılımınız ve puanlarınız burada.</p>
           </div>
           <div className="hero-metrics hero-metrics-compact">
-            <StatCard title="Kayıtlı etkinlik" value={myStats.data.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
-            <StatCard title="Katıldığım etkinlik" value={myStats.data.attendedEventCount} accent="blue" subtitle="Fiili katılım" />
-            <StatCard title="Yaklaşan plan" value={myStats.data.upcomingEventCount} accent="orange" subtitle="Ajandadaki etkinlikler" />
+            <StatCard title="Kayıtlı Etkinlik" value={myStats.data.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
+            <StatCard title="Katıldığım" value={myStats.data.attendedEventCount} accent="blue" subtitle="Fiili katılım" />
+            <StatCard title="Yaklaşan Plan" value={myStats.data.upcomingEventCount} accent="orange" subtitle="Ajandadaki etkinlikler" />
             <StatCard
-              title="Verdiğim puan ortalaması"
+              title="Verdiğim Puan"
               value={myStats.data.reviewCount ? myStats.data.averageRatingGiven.toFixed(1) : "Yok"}
               accent="rose"
               subtitle={`${myStats.data.reviewCount} değerlendirme`}
@@ -82,7 +79,7 @@ export function StatisticsPage() {
         </section>
 
         <div className="two-column">
-          <SectionCard title="Yaklaşan etkinlik planım" description="Kısa vadede sizi bekleyen kayıtlı etkinlikler.">
+          <SectionCard title="Yaklaşan Planım" description="Kayıtlı etkinlikler.">
             <div className="stack-list">
               {upcomingEvents.length ? (
                 upcomingEvents.map((item) => (
@@ -99,12 +96,12 @@ export function StatisticsPage() {
                   </div>
                 ))
               ) : (
-                <EmptyState title="Yaklaşan kayıt bulunmuyor." description="Yeni etkinliklere kayıt olduğunuzda planınız burada görünür." />
+                <EmptyState title="Yaklaşan kayıt yok." description="Yeni etkinlikler burada görünür." icon="Tk" />
               )}
             </div>
           </SectionCard>
 
-          <SectionCard title="Katılım geçmişim" description="Tamamlanmış etkinlikler içindeki görünür hareketleriniz.">
+          <SectionCard title="Katılım Geçmişim" description="Tamamlanan etkinlikler.">
             <div className="stack-list">
               {attendedEvents.length ? (
                 attendedEvents.map((item) => (
@@ -114,36 +111,25 @@ export function StatisticsPage() {
                   </div>
                 ))
               ) : (
-                <EmptyState
-                  title="Henüz işlenmiş katılım yok."
-                  description="Etkinlikler tamamlandıkça ve katılım işlendiğinde bu alan dolacaktır."
-                />
+                <EmptyState title="Henüz katılım yok." description="İşlenmiş katılımlar burada görünür." icon="Kt" />
               )}
             </div>
           </SectionCard>
         </div>
 
-        <SectionCard title="Kişisel özet" description="Gerçek verinizle beslenen, daha dolu ve daha düzenli bir kişisel görünüm.">
+        <SectionCard title="Kişisel Özet" description="Kısa görünüm.">
           <div className="insight-grid">
             <div className="insight-card">
-              <strong>Etkinlik ritmi</strong>
-              <span>{registeredEvents.length} kayıt, {attendedEvents.length} fiili katılım ile aktif bir kullanım akışı görünür.</span>
+              <strong>Etkinlik Ritmi</strong>
+              <span>{registeredEvents.length} kayıt, {attendedEvents.length} katılım.</span>
             </div>
             <div className="insight-card">
-              <strong>Gelecek planı</strong>
-              <span>
-                {upcomingEvents.length
-                  ? `${upcomingEvents.length} yaklaşan plan ajandanızda yer alıyor.`
-                  : "Takviminizi genişletmek için yeni etkinliklere kayıt olabilirsiniz."}
-              </span>
+              <strong>Gelecek Planı</strong>
+              <span>{upcomingEvents.length ? `${upcomingEvents.length} etkinlik ajandanızda.` : "Takvim şu an boş."}</span>
             </div>
             <div className="insight-card">
-              <strong>Geri bildirim katkısı</strong>
-              <span>
-                {myStats.data.reviewCount
-                  ? `${myStats.data.reviewCount} etkinlik için puan verildi.`
-                  : "Henüz değerlendirme bırakılmamış."}
-              </span>
+              <strong>Geri Bildirim</strong>
+              <span>{myStats.data.reviewCount ? `${myStats.data.reviewCount} yorum bıraktınız.` : "Henüz yorum yok."}</span>
             </div>
           </div>
         </SectionCard>
@@ -159,67 +145,60 @@ export function StatisticsPage() {
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Yönetim İstatistikleri</p>
-          <h1>Daha güçlü, daha okunur bir karar panosu.</h1>
-          <p>
-            İstatistik ekranı artık yalnızca sayılar göstermiyor; kulüp hareketini, katılım kalitesini, salon
-            yoğunluğunu ve öğrenci dağılımını anlamayı kolaylaştıran bir sunum yüzeyi sunuyor.
-          </p>
+          <p className="eyebrow">İstatistikler</p>
+          <h1>Karar özeti</h1>
+          <p>Kulüpler, katılım ve salon yoğunluğu tek görünümde.</p>
         </div>
         <div className="hero-metrics">
-          <StatCard title="Toplam öğrenci" value={dashboard.data.totalStudents} accent="teal" subtitle="Sistemde kayıtlı öğrenci" />
-          <StatCard title="Toplam kayıt" value={dashboard.data.totalRegistrations} accent="blue" subtitle="Etkinlik başvuruları" />
-          <StatCard title="Toplam katılım" value={dashboard.data.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
+          <StatCard title="Toplam Öğrenci" value={dashboard.data.totalStudents} accent="teal" subtitle="Kayıtlı kullanıcı" />
+          <StatCard title="Toplam Kayıt" value={dashboard.data.totalRegistrations} accent="blue" subtitle="Etkinlik başvurusu" />
+          <StatCard title="Toplam Katılım" value={dashboard.data.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
           <StatCard
-            title="Ortalama puan"
+            title="Ortalama Puan"
             value={dashboard.data.averageRating ? dashboard.data.averageRating.toFixed(1) : "Yok"}
             accent="rose"
-            subtitle="Katılımcı değerlendirmeleri"
+            subtitle="Genel değerlendirme"
           />
         </div>
       </section>
 
-      <SectionCard title="Öne çıkan yönetim sinyalleri" description="Sunum anlatımını güçlendiren kısa yorumlar ve mevcut verinin en anlamlı yüzleri.">
+      <SectionCard title="Öne Çıkan Sinyaller" description="En görünür veriler.">
         <div className="insight-grid">
           <div className="insight-card">
-            <strong>En üretken kulüp</strong>
-            <span>{topClub ? `${topClub.clubName}, ${topClub.eventCount} etkinlikle öne çıkıyor.` : "Henüz kulüp verisi yok."}</span>
+            <strong>En Aktif Kulüp</strong>
+            <span>{topClub ? `${topClub.clubName}, ${topClub.eventCount} etkinlik.` : "Veri yok."}</span>
           </div>
           <div className="insight-card">
-            <strong>En yoğun salon</strong>
-            <span>{topRoom ? `${topRoom.roomName}, ${topRoom.eventCount} kullanım ile planlama yükünü taşıyor.` : "Henüz salon verisi yok."}</span>
+            <strong>En Yoğun Salon</strong>
+            <span>{topRoom ? `${topRoom.roomName}, ${topRoom.eventCount} kullanım.` : "Veri yok."}</span>
           </div>
           <div className="insight-card">
-            <strong>En yüksek doluluk</strong>
-            <span>
-              {strongestEvent
-                ? `${strongestEvent.title}, %${Math.round(strongestEvent.fillRate)} doluluk oranına ulaştı.`
-                : "Henüz etkinlik performans verisi yok."}
-            </span>
+            <strong>En Yüksek Doluluk</strong>
+            <span>{strongestEvent ? `${strongestEvent.title}, %${Math.round(strongestEvent.fillRate)}.` : "Veri yok."}</span>
           </div>
         </div>
       </SectionCard>
 
       <div className="two-column">
-        <SectionCard title="Kulüp bazlı etkinlik üretimi" description="Kulüplerin ne kadar aktif içerik ürettiğini yatay karşılaştırma ile görün." className="chart-panel">
+        <SectionCard title="Kulüp Durumu" description="Etkinlik üretimi." className="chart-panel">
           <Bars data={clubs.data} xKey="clubName" dataKey="eventCount" />
         </SectionCard>
-        <SectionCard title="Fakülte dağılımı" description="Katılımcı havuzunun hangi akademik kümelerde yoğunlaştığını izleyin." className="chart-panel">
+        <SectionCard title="Fakülte Dağılımı" description="Katılımcı görünümü." className="chart-panel">
           <PieBreakdown data={toPieData(students.data?.facultyDistribution)} nameKey="name" dataKey="value" />
         </SectionCard>
       </div>
 
       <div className="two-column">
-        <SectionCard title="Etkinlik doluluk oranları" description="İlgi çeken etkinlikleri ve kapasite kullanımını kıyaslayın." className="chart-panel">
+        <SectionCard title="Etkinlik Özeti" description="Doluluk oranları." className="chart-panel">
           <Bars data={events.data} xKey="title" dataKey="fillRate" />
         </SectionCard>
-        <SectionCard title="Salon kullanım yoğunluğu" description="Hangi alanların planlama açısından daha kritik hale geldiğini görün." className="chart-panel">
+        <SectionCard title="Salon Yoğunluğu" description="Planlama baskısı." className="chart-panel">
           <Bars data={rooms.data} xKey="roomName" dataKey="eventCount" />
         </SectionCard>
       </div>
 
       <div className="two-column">
-        <SectionCard title="Kulüp görünümü" description="Üretim ve aktif üye sayısını birlikte değerlendirin.">
+        <SectionCard title="Kulüpler" description="Üretim ve aktif üyeler.">
           <div className="stack-list">
             {clubs.data.map((item) => (
               <div key={item.clubId} className="list-row list-row-split">
@@ -236,17 +215,18 @@ export function StatisticsPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Etkinlik görünümü" description="Katılım, maliyet ve değerlendirme dengesini tek listede izleyin.">
+        <SectionCard title="Etkinlikler" description="Katılım ve puan dengesi.">
           <div className="stack-list">
-            {events.data.slice(0, 6).map((item) => (
-              <div key={item.eventId} className="list-row">
-                <strong>{item.title}</strong>
-                <span>
-                  %{Math.round(item.fillRate)} doluluk • {item.actualAttendanceCount} katılım • Ortalama{" "}
-                  {item.averageRating ? item.averageRating.toFixed(1) : "0.0"}
-                </span>
-              </div>
-            ))}
+            {events.data.slice(0, 6).length ? (
+              events.data.slice(0, 6).map((item) => (
+                <div key={item.eventId} className="list-row">
+                  <strong>{item.title}</strong>
+                  <span>%{Math.round(item.fillRate)} doluluk • {item.actualAttendanceCount} katılım • {item.averageRating ? item.averageRating.toFixed(1) : "0.0"} puan</span>
+                </div>
+              ))
+            ) : (
+              <EmptyState title="Etkinlik verisi yok." description="Yeni etkinlikler burada görünür." icon="Et" />
+            )}
           </div>
         </SectionCard>
       </div>

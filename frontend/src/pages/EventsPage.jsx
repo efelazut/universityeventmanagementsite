@@ -7,12 +7,38 @@ import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { deleteEvent, fetchEvents, fetchMyEvents } from "../services/resourceService";
 
+function normalizeEvent(item = {}) {
+  return {
+    id: Number(item.id) || 0,
+    title: String(item.title || "Etkinlik adı güncelleniyor"),
+    clubName: String(item.clubName || "Kulüp bilgisi hazırlanıyor"),
+    description: String(item.description || "Etkinlik açıklaması henüz eklenmedi."),
+    category: String(item.category || ""),
+    campus: String(item.campus || ""),
+    format: String(item.format || "Fiziksel"),
+    imageUrl: String(item.imageUrl || ""),
+    locationDetails: String(item.locationDetails || ""),
+    roomName: String(item.roomName || ""),
+    building: String(item.building || ""),
+    computedStatus: String(item.computedStatus || item.status || "Upcoming"),
+    status: String(item.status || "Upcoming"),
+    isFree: Boolean(item.isFree),
+    clubId: Number(item.clubId) || 0,
+    averageRating: Number(item.averageRating) || 0,
+    registrationCount: Number(item.registrationCount) || 0,
+    pendingRegistrationCount: Number(item.pendingRegistrationCount) || 0,
+    requiresApproval: Boolean(item.requiresApproval),
+    startDate: item.startDate || new Date().toISOString(),
+    endDate: item.endDate || item.startDate || new Date().toISOString()
+  };
+}
+
 export function EventsPage() {
   const { apiBaseUrl, user } = useAuth();
   const location = useLocation();
   const eventsQuery = useAsyncData(() => fetchEvents(apiBaseUrl), [apiBaseUrl]);
   const myEventsQuery = useAsyncData(
-    () => (user ? fetchMyEvents(user.token, apiBaseUrl) : Promise.resolve({ registeredEvents: [] })),
+    () => (user?.token ? fetchMyEvents(user.token, apiBaseUrl) : Promise.resolve({ registeredEvents: [] })),
     [user?.token, apiBaseUrl]
   );
   const [feedback, setFeedback] = useState(location.state?.message ? { type: "success", text: location.state.message } : null);
@@ -26,25 +52,31 @@ export function EventsPage() {
     fee: "all"
   });
 
-  const canManageEvent = (event) =>
-    Boolean(user && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === event.clubId)));
+  const events = useMemo(() => {
+    if (!Array.isArray(eventsQuery.data)) {
+      return [];
+    }
 
-  const options = useMemo(() => {
-    const events = eventsQuery.data || [];
-    return {
-      clubs: [...new Map(events.map((item) => [item.clubId, item.clubName])).entries()],
-      categories: [...new Set(events.map((item) => item.category).filter(Boolean))],
-      campuses: [...new Set(events.map((item) => item.campus).filter(Boolean))]
-    };
+    return eventsQuery.data.filter(Boolean).map(normalizeEvent);
   }, [eventsQuery.data]);
 
+  const canManageEvent = (event) =>
+    Boolean(user && event?.id && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === event.clubId)));
+
+  const options = useMemo(() => ({
+    clubs: [...new Map(events.filter((item) => item.clubId).map((item) => [item.clubId, item.clubName])).entries()],
+    categories: [...new Set(events.map((item) => item.category).filter(Boolean))],
+    campuses: [...new Set(events.map((item) => item.campus).filter(Boolean))]
+  }), [events]);
+
   const filteredEvents = useMemo(() => {
-    return (eventsQuery.data || []).filter((item) => {
+    return events.filter((item) => {
+      const searchValue = filters.search.trim().toLocaleLowerCase("tr-TR");
       const matchesSearch =
-        !filters.search ||
-        item.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        item.clubName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        item.description.toLowerCase().includes(filters.search.toLowerCase());
+        !searchValue ||
+        item.title.toLocaleLowerCase("tr-TR").includes(searchValue) ||
+        item.clubName.toLocaleLowerCase("tr-TR").includes(searchValue) ||
+        item.description.toLocaleLowerCase("tr-TR").includes(searchValue);
 
       const matchesStatus = filters.status === "all" || item.computedStatus === filters.status;
       const matchesCategory = filters.category === "all" || item.category === filters.category;
@@ -58,7 +90,7 @@ export function EventsPage() {
 
       return matchesSearch && matchesStatus && matchesCategory && matchesClub && matchesCampus && matchesFormat && matchesFee;
     });
-  }, [eventsQuery.data, filters]);
+  }, [events, filters]);
 
   const handleDelete = async (id) => {
     const confirmed = window.confirm("Bu etkinliği silmek istediğinize emin misiniz?");
@@ -73,38 +105,45 @@ export function EventsPage() {
     }
   };
 
-  if (eventsQuery.loading || myEventsQuery.loading) {
+  if (eventsQuery.loading) {
     return <div className="loading-state loading-state-large">Etkinlikler hazırlanıyor...</div>;
   }
 
-  if (eventsQuery.error || myEventsQuery.error) {
-    return <div className="error-panel">{eventsQuery.error || myEventsQuery.error}</div>;
+  if (eventsQuery.error) {
+    return (
+      <SectionCard title="Etkinlikler yüklenemedi" description="Liste şu anda alınamıyor.">
+        <EmptyState title="Etkinlik verisine ulaşılamadı." description={eventsQuery.error || "Daha sonra tekrar deneyin."} icon="Et" />
+      </SectionCard>
+    );
   }
 
   return (
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Etkinlik Akışı</p>
-          <h1>Durumu ilk bakışta anlaşılan, büyük görselli etkinlik listesi.</h1>
-          <p>Geçmiş, devam eden ve yaklaşan etkinlikler artık daha güçlü filtreler ve daha okunur kartlarla ayrışıyor.</p>
+          <p className="eyebrow">Etkinlikler</p>
+          <h1>Etkinlik akışı</h1>
+          <p>Tüm etkinlikleri filtreleyip hızlıca inceleyin.</p>
         </div>
         <div className="hero-actions">
           {user && ["Admin", "ClubManager"].includes(user.role) ? (
             <Link className="primary-button link-button" to="/events/new">
-              Yeni Etkinlik Oluştur
+              Yeni Etkinlik
             </Link>
           ) : null}
           <div className="status-panel">
             <strong>{filteredEvents.length} etkinlik</strong>
-            <span>Filtreler güçlü, görünüm sade ve sunum kalitesinde tutuldu.</span>
+            <span>Filtreye göre görünen liste</span>
           </div>
         </div>
       </section>
 
+      {myEventsQuery.error && user ? (
+        <div className="notice-box">Kişisel etkinlik durumu geçici olarak alınamadı. Genel liste görünmeye devam ediyor.</div>
+      ) : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
-      <SectionCard title="Filtreler" description="Kategori, kulüp, kampüs, format ve ücret yapısına göre görünümü sadeleştirin.">
+      <SectionCard title="Filtreler" description="Listeyi sadeleştirin.">
         <div className="filter-toolbar event-filter-toolbar">
           <label className="filter-field">
             <span>Ara</span>
@@ -133,8 +172,8 @@ export function EventsPage() {
             <span>Kulüp</span>
             <select value={filters.club} onChange={(event) => setFilters({ ...filters, club: event.target.value })}>
               <option value="all">Tüm kulüpler</option>
-              {options.clubs.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
+              {options.clubs.map(([clubId, name]) => (
+                <option key={clubId} value={clubId}>{name}</option>
               ))}
             </select>
           </label>
@@ -167,11 +206,11 @@ export function EventsPage() {
       </SectionCard>
 
       {filteredEvents.length ? (
-        <SectionCard title="Etkinlik listesi" description="Kartlar görsel ağırlıklı, durum vurgulu ve hızlı karar vermeyi destekleyecek şekilde tasarlandı.">
+        <SectionCard title="Etkinlik Listesi" description="Duruma göre sıralanmış görünüm.">
           <div className="event-grid featured-grid">
             {filteredEvents.map((item) => (
               <EventCard
-                key={item.id}
+                key={item.id || `${item.title}-${item.startDate}`}
                 event={item}
                 footer={
                   canManageEvent(item) ? (
@@ -179,7 +218,7 @@ export function EventsPage() {
                       <Link className="ghost-button link-button" to={`/events/${item.id}/edit`}>
                         Düzenle
                       </Link>
-                      <button className="ghost-button" onClick={() => handleDelete(item.id)}>
+                      <button className="ghost-button" type="button" onClick={() => handleDelete(item.id)}>
                         Sil
                       </button>
                     </div>
@@ -194,7 +233,7 @@ export function EventsPage() {
           </div>
         </SectionCard>
       ) : (
-        <EmptyState title="Filtrelerle eşleşen etkinlik bulunamadı." description="Filtreleri gevşeterek daha geniş bir etkinlik akışına dönebilirsiniz." />
+        <EmptyState title="Etkinlik bulunamadı." description="Filtreleri gevşeterek daha geniş bir listeye dönebilirsiniz." icon="Et" />
       )}
     </div>
   );

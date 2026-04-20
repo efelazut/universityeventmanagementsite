@@ -16,6 +16,7 @@ import { CalendarPage } from "./pages/CalendarPage";
 import { HomePage } from "./pages/HomePage";
 import { ClubsPage } from "./pages/ClubsPage";
 import { OverlayShortcutPage } from "./pages/OverlayShortcutPage";
+import { OrganizerProfilePage } from "./pages/OrganizerProfilePage";
 
 export default function App() {
   return (
@@ -121,6 +122,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizers/:id"
+          element={
+            <ProtectedRoute>
+              <OrganizerProfilePage />
             </ProtectedRoute>
           }
         />

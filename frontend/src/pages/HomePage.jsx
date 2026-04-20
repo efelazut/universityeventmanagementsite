@@ -26,23 +26,23 @@ export function HomePage() {
     <div className="page-stack">
       <section className="page-hero home-hero">
         <div>
-          <p className="eyebrow">Maltepe Üniversitesi Yaşamı</p>
-          <h1>Kampüste yaşayan, üreten ve görünür olan bir kulüp platformu.</h1>
-          <p>Öne çıkan etkinlikler, güçlü kulüp vitrinleri ve yaklaşan kampüs akışı tek bakışta sunuluyor.</p>
+          <p className="eyebrow">Maltepe Üniversitesi</p>
+          <h1>Kampüs akışını tek bakışta görün.</h1>
+          <p>Etkinlikler, kulüpler ve takvim aynı ekranda.</p>
           <div className="inline-actions">
-            <Link className="primary-button link-button" to="/events">Etkinlikleri Aç</Link>
-            <Link className="ghost-button link-button" to="/clubs">Kulüpleri Keşfet</Link>
+            <Link className="primary-button link-button" to="/events">Etkinlikler</Link>
+            <Link className="ghost-button link-button" to="/clubs">Kulüpler</Link>
           </div>
         </div>
         <div className="hero-metrics">
-          <StatCard title="Aktif kulüp" value={feed.activeClubCount} accent="teal" subtitle="Kampüste üretimde olan topluluklar" />
-          <StatCard title="Yaklaşan etkinlik" value={feed.upcomingEventCount} accent="blue" subtitle="Takvime işlenmiş planlar" />
-          <StatCard title="Toplam katılım" value={feed.totalParticipationCount} accent="orange" subtitle="Platform genelindeki başvurular" />
-          <StatCard title="Aktif öğrenci" value={feed.activeStudentCount} accent="rose" subtitle="Topluluklarda yer alan kullanıcılar" />
+          <StatCard title="Aktif Kulüp" value={feed.activeClubCount} accent="teal" subtitle="Topluluklar" />
+          <StatCard title="Yaklaşan" value={feed.upcomingEventCount} accent="blue" subtitle="Takvimde" />
+          <StatCard title="Katılım" value={feed.totalParticipationCount} accent="orange" subtitle="Toplam kayıt" />
+          <StatCard title="Aktif Öğrenci" value={feed.activeStudentCount} accent="rose" subtitle="Platformda" />
         </div>
       </section>
 
-      <SectionCard title="Öne çıkan etkinlikler" description="İlgi seviyesi yüksek ve görsel olarak güçlü etkinlik seçkisi.">
+      <SectionCard title="Öne Çıkan Etkinlikler" description="Yeni ve yüksek puanlı etkinlikler.">
         {feed.popularEvents.length ? (
           <div className="event-grid featured-grid">
             {feed.popularEvents.map((event) => (
@@ -54,28 +54,28 @@ export function HomePage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="Öne çıkan etkinlik yok." description="Yeni etkinlikler yayınlandığında vitrin burada dolacak." />
+          <EmptyState title="Öne çıkan etkinlik yok." description="Yeni etkinlikler yayımlandığında bu alan güncellenecek." />
         )}
       </SectionCard>
 
       <div className="two-column">
-        <SectionCard title="Devam eden etkinlikler" description="Şu anda kampüste aktif olan akışlar.">
+        <SectionCard title="Devam Edenler" description="Şu anda canlı olan etkinlikler.">
           <div className="stack-list">
             {feed.ongoingEvents.length ? (
               feed.ongoingEvents.map((event) => (
                 <Link key={event.id} className="list-row" to={`/events/${event.id}`}>
                   <strong>{event.title}</strong>
                   <span>{event.clubName} • {event.locationDetails || event.roomName}</span>
-                  <span>Şu anda canlı olarak devam ediyor.</span>
+                  <span>Şu anda devam ediyor.</span>
                 </Link>
               ))
             ) : (
-              <EmptyState title="Şu anda devam eden etkinlik yok." description="Yeni canlı etkinlik başladığında burada görünecek." />
+              <EmptyState title="Şu anda devam eden etkinlik yok." description="Yeni canlı etkinlik başladığında burada görünür." />
             )}
           </div>
         </SectionCard>
 
-        <SectionCard title="Yaklaşan etkinlikler" description="Takvimde yakın tarihte öne çıkan planlar.">
+        <SectionCard title="Yaklaşanlar" description="Sıradaki planlar.">
           <div className="stack-list">
             {feed.upcomingEvents.length ? (
               feed.upcomingEvents.slice(0, 5).map((event) => (
@@ -86,13 +86,13 @@ export function HomePage() {
                 </Link>
               ))
             ) : (
-              <EmptyState title="Yaklaşan etkinlik bulunmuyor." description="Takvimde yeni planlar oluştuğunda bu alan güncellenecek." />
+              <EmptyState title="Yaklaşan etkinlik bulunmuyor." description="Takvimde yeni planlar oluştuğunda burada görünür." />
             )}
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Öne çıkan kulüpler" description="Kulüplerin üretimlerini ve topluluk enerjisini gösteren güçlü vitrin.">
+      <SectionCard title="Öne Çıkan Kulüpler" description="Aktif kulüp vitrini.">
         <div className="club-showcase-grid">
           {feed.featuredClubs.map((club) => (
             <article key={club.id} className="club-showcase-card">
@@ -110,7 +110,7 @@ export function HomePage() {
                   <strong>{club.memberCount}</strong>
                 </div>
                 <div>
-                  <span>Ortalama puan</span>
+                  <span>Puan</span>
                   <RatingStars value={club.averageRating} reviewCount={club.reviewCount} compact />
                 </div>
               </div>
@@ -121,7 +121,7 @@ export function HomePage() {
                   </div>
                 ))}
               </div>
-              <Link className="primary-button link-button" to={`/clubs/${club.id}`}>Kulübü Görüntüle</Link>
+              <Link className="primary-button link-button" to={`/clubs/${club.id}`}>Kulübü Aç</Link>
             </article>
           ))}
         </div>

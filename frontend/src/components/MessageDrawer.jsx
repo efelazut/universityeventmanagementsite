@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 
+const DEFAULT_CLUB_IMAGE = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=200&q=80";
+
 export function MessageDrawer({ clubs = [] }) {
   const { user } = useAuth();
   const {
@@ -20,7 +22,7 @@ export function MessageDrawer({ clubs = [] }) {
   } = useCommunicationCenter();
   const [reply, setReply] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const selectedMessages = Array.isArray(selectedThread?.messages) ? selectedThread.messages : [];
+
   const activeDraft = useMemo(
     () => ({
       clubId: messageDraft.clubId || "",
@@ -30,13 +32,18 @@ export function MessageDrawer({ clubs = [] }) {
     [messageDraft]
   );
 
+  const selectedMessages = Array.isArray(selectedThread?.messages) ? selectedThread.messages : [];
+  const selectedClub = clubs.find((club) => club.id === Number(activeDraft.clubId)) || null;
+
   if (!user || !isMessageDrawerOpen) {
     return null;
   }
 
   const handleCreateThread = async (event) => {
     event.preventDefault();
-    if (!activeDraft.clubId || !activeDraft.subject.trim() || !activeDraft.initialMessage.trim()) {
+    const nextSubject = activeDraft.subject.trim() || "Kulüp İletişimi";
+
+    if (!activeDraft.clubId || !activeDraft.initialMessage.trim()) {
       return;
     }
 
@@ -44,7 +51,7 @@ export function MessageDrawer({ clubs = [] }) {
     try {
       await createThread({
         clubId: Number(activeDraft.clubId),
-        subject: activeDraft.subject.trim(),
+        subject: nextSubject,
         initialMessage: activeDraft.initialMessage.trim()
       });
     } finally {
@@ -84,20 +91,24 @@ export function MessageDrawer({ clubs = [] }) {
         <div className="drawer-body">
           <div className="drawer-thread-list">
             <div className="drawer-section-title">Konuşmalar</div>
-            <div className="stack-list">
+            <div className="stack-list compact-list">
               {threads.length ? (
                 threads.map((thread) => (
                   <button
                     key={thread.id}
-                    className={`thread-list-item ${selectedThreadId === thread.id ? "active" : ""}`}
+                    className={`thread-list-item thread-list-item-compact ${selectedThreadId === thread.id ? "active" : ""}`}
                     onClick={() => selectThread(thread.id)}
                   >
-                    <div className="thread-list-head">
-                      <strong>{thread.subject}</strong>
-                      {thread.unreadCount ? <span className="thread-badge">{thread.unreadCount}</span> : null}
+                    <div className="thread-list-shell">
+                      <img className="thread-avatar" src={thread.clubAvatarUrl || DEFAULT_CLUB_IMAGE} alt={thread.clubName} />
+                      <div className="thread-list-copy">
+                        <div className="thread-list-head">
+                          <strong>{thread.clubName}</strong>
+                          {thread.unreadCount ? <span className="thread-badge">{thread.unreadCount}</span> : null}
+                        </div>
+                        <small>{new Date(thread.updatedAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}</small>
+                      </div>
                     </div>
-                    <span>{thread.clubName}</span>
-                    <small>{thread.lastMessagePreview || "Henüz mesaj yok."}</small>
                   </button>
                 ))
               ) : (
@@ -109,7 +120,7 @@ export function MessageDrawer({ clubs = [] }) {
             </div>
 
             {user.role === "Student" ? (
-              <form className="drawer-compose-form" onSubmit={handleCreateThread}>
+              <form className="drawer-compose-form drawer-compose-form-compact" onSubmit={handleCreateThread}>
                 <div className="drawer-section-title">Yeni konuşma</div>
                 <label>
                   Kulüp
@@ -123,15 +134,14 @@ export function MessageDrawer({ clubs = [] }) {
                   </select>
                 </label>
                 <label>
-                  Konu
-                  <input value={activeDraft.subject} onChange={(event) => setMessageDraft({ ...activeDraft, subject: event.target.value })} />
-                </label>
-                <label>
-                  İlk mesaj
+                  Mesajınız
                   <textarea
-                    rows="4"
+                    rows="3"
                     value={activeDraft.initialMessage}
                     onChange={(event) => setMessageDraft({ ...activeDraft, initialMessage: event.target.value })}
+                    placeholder={`${
+                      selectedClub?.name || "Kulüp"
+                    } ekibine iletmek istediğiniz kısa mesaj`}
                   />
                 </label>
                 <button className="primary-button" type="submit" disabled={submitting}>
@@ -144,12 +154,24 @@ export function MessageDrawer({ clubs = [] }) {
           <div className="drawer-conversation">
             {threadLoading ? <div className="loading-state">Konuşma yükleniyor...</div> : null}
             {threadError ? <div className="error-panel">{threadError}</div> : null}
+
             {selectedThread ? (
               <>
-                <div className="conversation-header">
-                  <strong>{selectedThread.subject}</strong>
-                  <span>{selectedThread.clubName}</span>
+                <div className="conversation-header conversation-header-compact">
+                  <div className="conversation-club">
+                    <img
+                      className="thread-avatar thread-avatar-large"
+                      src={selectedThread.clubAvatarUrl || DEFAULT_CLUB_IMAGE}
+                      alt={selectedThread.clubName}
+                    />
+                    <div>
+                      <strong>{selectedThread.clubName}</strong>
+                      <span>{selectedThread.subject || "Kulüp İletişimi"}</span>
+                    </div>
+                  </div>
+                  <span className="pill tone-dark">{selectedMessages.length} mesaj</span>
                 </div>
+
                 <div className="conversation-messages">
                   {selectedMessages.map((message) => (
                     <div key={message.id} className={`message-bubble ${message.senderUserId === user.id ? "is-own" : ""}`}>
@@ -158,17 +180,18 @@ export function MessageDrawer({ clubs = [] }) {
                     </div>
                   ))}
                 </div>
-                <form className="conversation-reply" onSubmit={handleReply}>
-                  <textarea rows="3" value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Mesajınızı yazın" />
+
+                <form className="conversation-reply conversation-reply-compact" onSubmit={handleReply}>
+                  <textarea rows="2" value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Mesajınızı yazın" />
                   <button className="primary-button" type="submit" disabled={submitting || !reply.trim()}>
                     {submitting ? "Gönderiliyor..." : "Gönder"}
                   </button>
                 </form>
               </>
             ) : (
-              <div className="empty-state-box">
+              <div className="empty-state-box conversation-empty">
                 <strong>Bir konuşma seçin.</strong>
-                <span>Soldan mevcut konuşmalardan birini açabilir veya yeni konuşma başlatabilirsiniz.</span>
+                <span>Soldan mevcut kulüp konuşmalarınızı açabilir veya aşağıdan yeni bir konuşma başlatabilirsiniz.</span>
               </div>
             )}
           </div>

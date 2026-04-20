@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { RatingStars } from "../components/RatingStars";
@@ -21,6 +21,13 @@ import {
 } from "../services/resourceService";
 import { formatEventDate, formatEventTimeRange, getEventVisualState } from "../utils/eventPresentation";
 
+const eventFallbackImage = "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80";
+
+function isOptionalAuthError(message) {
+  const value = String(message || "").toLowerCase();
+  return value.includes("user not found") || value.includes("401") || value.includes("unauthorized");
+}
+
 export function EventDetailPage() {
   const { id } = useParams();
   const { apiBaseUrl, user } = useAuth();
@@ -28,31 +35,52 @@ export function EventDetailPage() {
   const navigate = useNavigate();
   const eventQuery = useAsyncData(() => fetchEventById(id, apiBaseUrl), [id, apiBaseUrl]);
   const regQuery = useAsyncData(() => fetchEventRegistrations(id, apiBaseUrl), [id, apiBaseUrl]);
-  const myEventsQuery = useAsyncData(() => (user ? fetchMyEvents(user.token, apiBaseUrl) : Promise.resolve(null)), [user?.token, apiBaseUrl]);
+  const myEventsQuery = useAsyncData(
+    () => (user?.token ? fetchMyEvents(user.token, apiBaseUrl) : Promise.resolve({ registeredEvents: [], attendedEvents: [], upcomingRegistrations: [] })),
+    [user?.token, apiBaseUrl]
+  );
   const reviewsQuery = useAsyncData(() => fetchEventReviews(id, apiBaseUrl), [id, apiBaseUrl]);
   const [feedback, setFeedback] = useState(null);
   const [reviewFilter, setReviewFilter] = useState("newest");
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [messageText, setMessageText] = useState("");
+  const [detailImage, setDetailImage] = useState("");
+
+  useEffect(() => {
+    setDetailImage(eventQuery.data?.imageUrl || eventFallbackImage);
+  }, [eventQuery.data?.imageUrl]);
+
+  const hasOptionalActivityError = isOptionalAuthError(myEventsQuery.error);
+  const activity = hasOptionalActivityError
+    ? { registeredEvents: [], attendedEvents: [], upcomingRegistrations: [] }
+    : (myEventsQuery.data || { registeredEvents: [], attendedEvents: [], upcomingRegistrations: [] });
 
   const registrationInfo = useMemo(() => {
-    if (!user || !myEventsQuery.data?.registeredEvents) return null;
-    return myEventsQuery.data.registeredEvents.find((item) => item.id === Number(id)) || null;
-  }, [id, myEventsQuery.data, user]);
+    if (!user || !Array.isArray(activity.registeredEvents)) return null;
+    return activity.registeredEvents.find((item) => item.id === Number(id)) || null;
+  }, [activity.registeredEvents, id, user]);
 
-  if (eventQuery.loading || regQuery.loading || myEventsQuery.loading || reviewsQuery.loading) {
+  if (eventQuery.loading || regQuery.loading || reviewsQuery.loading) {
     return <div className="loading-state loading-state-large">Etkinlik ayrıntıları yükleniyor...</div>;
   }
 
-  if (eventQuery.error || regQuery.error || myEventsQuery.error || reviewsQuery.error) {
-    return <div className="error-panel">{eventQuery.error || regQuery.error || myEventsQuery.error || reviewsQuery.error}</div>;
+  if (eventQuery.error || regQuery.error || reviewsQuery.error) {
+    return <div className="error-panel">{eventQuery.error || regQuery.error || reviewsQuery.error}</div>;
   }
 
   const item = eventQuery.data;
+  if (!item) {
+    return (
+      <SectionCard title="Etkinlik bilgisi şu anda gösterilemiyor" description="Temel bilgileri korumaya çalışıyoruz.">
+        <EmptyState title="Etkinlik verisi bulunamadı." description="Listeye dönüp diğer etkinlikleri inceleyebilirsiniz." icon="Et" />
+      </SectionCard>
+    );
+  }
+
   const registrations = Array.isArray(regQuery.data) ? regQuery.data : [];
   const reviews = Array.isArray(reviewsQuery.data) ? reviewsQuery.data : [];
   const visualState = getEventVisualState(item);
-  const canManageEvent = user && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === item.clubId));
+  const canManageEvent = Boolean(user && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === item.clubId)));
   const eventEnded = item.computedStatus === "Completed";
   const eventStarted = item.computedStatus === "Ongoing" || item.computedStatus === "Completed";
   const alreadyReviewed = reviews.some((review) => review.userId === user?.id);
@@ -127,7 +155,7 @@ export function EventDetailPage() {
   const handleMessageClub = async () => {
     await openMessages({
       clubId: item.clubId,
-      subject: `${item.title} hakkında soru`,
+      subject: item.clubName || "Kulüp ile iletişim",
       initialMessage: messageText || "Etkinlik hakkında bilgi rica ediyorum."
     });
   };
@@ -136,7 +164,11 @@ export function EventDetailPage() {
     <div className="page-stack">
       <section className="detail-hero detail-hero-rich event-detail-hero">
         <div className="event-detail-media">
-          <img src={item.imageUrl} alt={item.title} />
+          <img
+            src={detailImage || item.imageUrl || eventFallbackImage}
+            alt={item.title}
+            onError={() => setDetailImage(eventFallbackImage)}
+          />
         </div>
         <div className="event-detail-content">
           <div className="badge-row badge-row-spaced">
@@ -145,18 +177,18 @@ export function EventDetailPage() {
             {item.requiresApproval ? <span className="pill tone-gold">Onaylı Katılım</span> : null}
           </div>
           <h1>{item.title}</h1>
-          <p className="event-club-name event-club-name-detail">{item.clubName}</p>
-          <p>{item.description}</p>
+          <p className="event-club-name event-club-name-detail">{item.clubName || "Kulüp bilgisi hazırlanıyor"}</p>
+          <p>{item.description || "Etkinlik açıklaması şu anda güncelleniyor."}</p>
 
           <div className="event-detail-summary">
             <div><span>Tarih</span><strong>{formatEventDate(item.startDate)}</strong></div>
             <div><span>Saat</span><strong>{formatEventTimeRange(item.startDate, item.endDate)}</strong></div>
-            <div><span>Yer</span><strong>{item.format === "Online" ? "Online" : item.locationDetails || `${item.roomName} / ${item.building}`}</strong></div>
+            <div><span>Yer</span><strong>{item.format === "Online" ? "Online" : item.locationDetails || `${item.roomName || "Salon bilgisi yok"} / ${item.building || "Kampüs"}`}</strong></div>
             <div><span>Kayıt tipi</span><strong>{item.requiresApproval ? "Başvuru + Onay" : "Doğrudan Katılım"}</strong></div>
           </div>
 
           <div className="inline-actions">
-            <Link className="ghost-button link-button" to={`/clubs/${item.clubId}`}>Kulüp Sayfası</Link>
+            {item.clubId ? <Link className="ghost-button link-button" to={`/clubs/${item.clubId}`}>Kulüp Sayfası</Link> : null}
             {canManageEvent ? <Link className="ghost-button link-button" to={`/events/${item.id}/edit`}>Etkinliği Düzenle</Link> : null}
             {canManageEvent ? <button className="ghost-button" onClick={handleDelete}>Etkinliği Sil</button> : null}
             {user?.role === "Student" && !registrationInfo ? (
@@ -173,6 +205,12 @@ export function EventDetailPage() {
         </div>
       </section>
 
+      {hasOptionalActivityError ? (
+        <SectionCard title="Katılım durumu şu anda doğrulanamadı" description="Etkinlik bilgileri görünmeye devam ediyor.">
+          <div className="notice-box">Kullanıcıya özel katılım bilgisi geçici olarak alınamadı. Genel etkinlik içeriği kullanılabilir durumda.</div>
+        </SectionCard>
+      ) : null}
+
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
       <div className="stat-grid">
@@ -183,32 +221,32 @@ export function EventDetailPage() {
       </div>
 
       <div className="two-column">
-        <SectionCard title="Etkinlik bilgileri" description="Planlama, konum ve katılım görünümü.">
+        <SectionCard title="Etkinlik Bilgileri" description="Planlama ve konum.">
           <div className="detail-table">
-            <div><span>Kulüp</span><strong>{item.clubName}</strong></div>
+            <div><span>Kulüp</span><strong>{item.clubName || "Kulüp bilgisi yok"}</strong></div>
             <div><span>Kategori</span><strong>{item.category || "Genel"}</strong></div>
             <div><span>Kampüs</span><strong>{item.campus || "Belirtilmedi"}</strong></div>
-            <div><span>Mekân</span><strong>{item.format === "Online" ? "Online" : item.locationDetails || item.roomName}</strong></div>
-            <div><span>Salon</span><strong>{item.roomName}</strong></div>
-            <div><span>Fiili katılım</span><strong>{item.actualAttendanceCount}</strong></div>
+            <div><span>Mekân</span><strong>{item.format === "Online" ? "Online" : item.locationDetails || item.roomName || "Yer bilgisi güncelleniyor"}</strong></div>
+            <div><span>Salon</span><strong>{item.roomName || "Salon bilgisi yok"}</strong></div>
+            <div><span>Fiili Katılım</span><strong>{item.actualAttendanceCount}</strong></div>
           </div>
         </SectionCard>
 
-        <SectionCard title="Kulübe yaz" description="Sorunuzu sayfadan ayrılmadan mesaj paneliyle iletin.">
+        <SectionCard title="İletişim Kur" description="Kulüple sayfadan ayrılmadan iletişim başlatın.">
           {user ? (
             <div className="management-form">
-              <textarea rows="5" value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Kulübe iletmek istediğiniz mesaj" />
+              <textarea rows="4" value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Kulübe iletmek istediğiniz kısa mesaj" />
               <div className="form-actions">
-                <button className="primary-button" type="button" onClick={handleMessageClub}>Mesaj Panelini Aç</button>
+                <button className="primary-button" type="button" onClick={handleMessageClub}>İletişim Kur</button>
               </div>
             </div>
           ) : (
-            <EmptyState title="Mesaj için giriş yapın." description="Kulüp yöneticilerine soru göndermek için önce hesabınıza giriş yapın." />
+            <EmptyState title="Mesaj için giriş yapın." description="Kulüp yöneticilerine soru göndermek için önce hesabınıza giriş yapın." icon="Ms" />
           )}
         </SectionCard>
       </div>
 
-      <SectionCard title="Başvuru ve katılım listesi" description="Onay bekleyenler, onaylananlar ve fiili katılım yönetimi.">
+      <SectionCard title="Başvuru ve Katılım Listesi" description="Onay ve yoklama görünümü.">
         <div className="stack-list">
           {registrations.length ? (
             registrations.map((registration) => (
@@ -233,7 +271,7 @@ export function EventDetailPage() {
               </div>
             ))
           ) : (
-            <EmptyState title="Henüz katılım kaydı yok." description="İlk başvuru veya kayıt geldiğinde burada görünecek." />
+            <EmptyState title="Henüz katılım kaydı yok." description="İlk başvuru geldiğinde burada görünecek." icon="Kt" />
           )}
         </div>
       </SectionCard>
@@ -241,7 +279,7 @@ export function EventDetailPage() {
       <div className="two-column">
         <SectionCard
           title="Değerlendirmeler"
-          description="Filtrelenebilir ve görsel olarak daha güçlü yorum alanı."
+          description="Yorumlar ve puanlar."
           action={
             <div className="inline-actions">
               <button className={`ghost-button ${reviewFilter === "newest" ? "is-selected" : ""}`} onClick={() => setReviewFilter("newest")}>En Yeni</button>
@@ -264,12 +302,12 @@ export function EventDetailPage() {
                 </div>
               ))
             ) : (
-              <EmptyState title="Henüz değerlendirme yok." description="Etkinlik tamamlandıktan sonra yorumlar burada listelenecek." />
+              <EmptyState title="Henüz değerlendirme yok." description="Etkinlik tamamlandığında yorumlar burada listelenecek." icon="Pn" />
             )}
           </div>
         </SectionCard>
 
-        <SectionCard title="Yorum bırak" description="Etkinliğe katılan öğrenciler için pratik puan ve yorum alanı.">
+        <SectionCard title="Yorum Bırak" description="Katılan öğrenciler için.">
           {canReview ? (
             <form className="management-form" onSubmit={handleReviewSubmit}>
               <label>
@@ -284,14 +322,14 @@ export function EventDetailPage() {
               </label>
               <label>
                 Kısa yorum
-                <textarea rows="5" value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} placeholder="Etkinlik deneyiminizi paylaşın" />
+                <textarea rows="4" value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} placeholder="Etkinlik deneyiminizi paylaşın" />
               </label>
               <div className="form-actions">
                 <button className="primary-button" type="submit">Değerlendirmeyi Gönder</button>
               </div>
             </form>
           ) : (
-            <EmptyState title="Değerlendirme için uygun değilsiniz." description="Yalnızca etkinliğe katılan öğrenciler etkinlik sonrası yorum bırakabilir." />
+            <EmptyState title="Değerlendirme için uygun değilsiniz." description="Yalnızca etkinliğe katılan öğrenciler etkinlik sonrası yorum bırakabilir." icon="Pn" />
           )}
         </SectionCard>
       </div>

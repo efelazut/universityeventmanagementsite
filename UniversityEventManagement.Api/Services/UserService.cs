@@ -15,35 +15,12 @@ public class UserService : IUserService
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<UserResponse> GetAll() => _dbContext.Users
-        .AsNoTracking()
-        .Select(user => new UserResponse
-        {
-            Id = user.Id,
-            Name = user.FullName,
-            FullName = user.FullName,
-            Email = user.Email,
-            Role = user.Role,
-            Department = user.Department,
-            Faculty = user.Faculty,
-            StudentNumber = user.StudentNumber,
-            YearClass = user.YearClass,
-            AvatarUrl = user.AvatarUrl,
-            Bio = user.Bio,
-            IsActiveMember = user.IsActiveMember,
-            ClubId = user.ClubId
-        })
-        .ToList();
+    public IReadOnlyList<UserResponse> GetAll() => _dbContext.Users.AsNoTracking().Select(MapProjection).ToList();
 
     public ServiceResult<UserResponse> GetById(int id)
     {
-        var user = _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefault(item => item.Id == id);
-
-        return user is null
-            ? ServiceResult<UserResponse>.NotFound()
-            : ServiceResult<UserResponse>.Ok(Map(user));
+        var user = _dbContext.Users.AsNoTracking().FirstOrDefault(item => item.Id == id);
+        return user is null ? ServiceResult<UserResponse>.NotFound() : ServiceResult<UserResponse>.Ok(Map(user));
     }
 
     public ServiceResult<UserResponse> Create(UserRequest request)
@@ -59,11 +36,7 @@ public class UserService : IUserService
         }
 
         var normalizedEmail = request.Email.Trim();
-        var existingUser = _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefault(user => user.Email.ToLower() == normalizedEmail.ToLower());
-
-        if (existingUser is not null)
+        if (_dbContext.Users.AsNoTracking().Any(user => user.Email.ToLower() == normalizedEmail.ToLower()))
         {
             return ServiceResult<UserResponse>.Conflict("Email is already registered");
         }
@@ -107,11 +80,7 @@ public class UserService : IUserService
         }
 
         var normalizedEmail = request.Email.Trim();
-        var duplicateEmail = _dbContext.Users
-            .AsNoTracking()
-            .Any(user => user.Id != id && user.Email.ToLower() == normalizedEmail.ToLower());
-
-        if (duplicateEmail)
+        if (_dbContext.Users.AsNoTracking().Any(user => user.Id != id && user.Email.ToLower() == normalizedEmail.ToLower()))
         {
             return ServiceResult<UserResponse>.Conflict("Email is already registered");
         }
@@ -128,7 +97,6 @@ public class UserService : IUserService
         existingUser.ClubId = request.ClubId;
 
         _dbContext.SaveChanges();
-
         return ServiceResult<UserResponse>.Ok(Map(existingUser));
     }
 
@@ -156,68 +124,47 @@ public class UserService : IUserService
     public IReadOnlyList<UserResponse> GetByClubId(int clubId) => _dbContext.Users
         .AsNoTracking()
         .Where(user => user.ClubId == clubId)
-        .Select(user => new UserResponse
+        .Select(MapProjection)
+        .ToList();
+
+    public ServiceResult<UserProfileResponse> GetCurrentUser(int? userId, string? email)
+    {
+        var user = ResolveCurrentUser(userId, email);
+        if (user is null)
+        {
+            return ServiceResult<UserProfileResponse>.NotFound("Kullanıcı kaydı bulunamadı.");
+        }
+
+        return ServiceResult<UserProfileResponse>.Ok(new UserProfileResponse
         {
             Id = user.Id,
-            Name = user.FullName,
             FullName = user.FullName,
             Email = user.Email,
-            Role = user.Role,
-            Department = user.Department,
             Faculty = user.Faculty,
+            Department = user.Department,
             StudentNumber = user.StudentNumber,
             YearClass = user.YearClass,
             AvatarUrl = user.AvatarUrl,
             Bio = user.Bio,
+            Role = user.Role,
             IsActiveMember = user.IsActiveMember,
-            ClubId = user.ClubId
-        })
-        .ToList();
-
-    public ServiceResult<UserProfileResponse> GetCurrentUser(string email)
-    {
-        var user = _dbContext.Users
-            .AsNoTracking()
-            .Where(item => item.Email.ToLower() == email.Trim().ToLower())
-            .Select(item => new UserProfileResponse
-            {
-                Id = item.Id,
-                FullName = item.FullName,
-                Email = item.Email,
-                Faculty = item.Faculty,
-                Department = item.Department,
-                StudentNumber = item.StudentNumber,
-                YearClass = item.YearClass,
-                AvatarUrl = item.AvatarUrl,
-                Bio = item.Bio,
-                Role = item.Role,
-                IsActiveMember = item.IsActiveMember,
-                ClubId = item.ClubId,
-                ClubName = item.Club != null ? item.Club.Name : null
-            })
-            .FirstOrDefault();
-
-        return user is null
-            ? ServiceResult<UserProfileResponse>.NotFound("User not found")
-            : ServiceResult<UserProfileResponse>.Ok(user);
+            ClubId = user.ClubId,
+            ClubName = user.Club?.Name
+        });
     }
 
-    public ServiceResult<UserEventActivityResponse> GetCurrentUserEvents(string email)
+    public ServiceResult<UserEventActivityResponse> GetCurrentUserEvents(int? userId, string? email)
     {
-        var user = _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefault(item => item.Email.ToLower() == email.Trim().ToLower());
-
+        var user = ResolveCurrentUser(userId, email);
         if (user is null)
         {
-            return ServiceResult<UserEventActivityResponse>.NotFound("User not found");
+            return ServiceResult<UserEventActivityResponse>.Ok(new UserEventActivityResponse());
         }
 
         var now = DateTime.UtcNow;
         var items = _dbContext.Registrations
             .AsNoTracking()
-            .Where(registration => registration.UserId == user.Id)
-            .Where(registration => registration.Event != null)
+            .Where(registration => registration.UserId == user.Id && registration.Event != null)
             .Select(registration => new UserEventActivityItemResponse
             {
                 Id = registration.Event!.Id,
@@ -242,7 +189,113 @@ public class UserService : IUserService
         });
     }
 
+    public ServiceResult<OrganizerProfileResponse> GetOrganizerProfile(int id)
+    {
+        var user = _dbContext.Users
+            .AsNoTracking()
+            .Include(item => item.Club)
+            .Include(item => item.ClubMemberships)
+                .ThenInclude(membership => membership.Club)
+            .FirstOrDefault(item => item.Id == id);
+
+        if (user is null)
+        {
+            return ServiceResult<OrganizerProfileResponse>.NotFound("Yönetici bulunamadı.");
+        }
+
+        var managedClubIds = user.ClubMemberships
+            .Where(membership => membership.Status == "Active" && membership.Role != "Member")
+            .Select(membership => membership.ClubId)
+            .Distinct()
+            .ToList();
+
+        if (managedClubIds.Count == 0 && user.ClubId.HasValue)
+        {
+            managedClubIds.Add(user.ClubId.Value);
+        }
+
+        var events = _dbContext.Events
+            .AsNoTracking()
+            .Include(item => item.Club)
+            .Include(item => item.Reviews)
+            .Where(item => managedClubIds.Contains(item.ClubId))
+            .OrderByDescending(item => item.StartDate)
+            .ToList();
+
+        var allReviews = events.SelectMany(item => item.Reviews).ToList();
+
+        return ServiceResult<OrganizerProfileResponse>.Ok(new OrganizerProfileResponse
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            AvatarUrl = user.AvatarUrl,
+            Bio = user.Bio,
+            PrimaryClubName = user.Club?.Name ?? user.ClubMemberships.FirstOrDefault()?.Club?.Name ?? "Kulüp bilgisi yok",
+            PrimaryClubCategory = user.Club?.Category ?? user.ClubMemberships.FirstOrDefault()?.Club?.Category ?? string.Empty,
+            ManagedClubNames = user.ClubMemberships
+                .Where(membership => membership.Status == "Active" && membership.Role != "Member")
+                .Select(membership => membership.Club?.Name ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct()
+                .ToList(),
+            TotalEventCount = events.Count,
+            AverageEventRating = allReviews.Count == 0 ? 0 : allReviews.Average(review => review.Rating),
+            TotalReviewCount = allReviews.Count,
+            Events = events.Select(item => new OrganizerEventSummaryResponse
+            {
+                Id = item.Id,
+                Title = item.Title,
+                ImageUrl = item.ImageUrl,
+                StartDate = item.StartDate,
+                ClubName = item.Club?.Name ?? string.Empty,
+                Status = EventService.ComputeStatus(item),
+                AverageRating = item.Reviews.Count == 0 ? 0 : item.Reviews.Average(review => review.Rating),
+                ReviewCount = item.Reviews.Count
+            }).ToList()
+        });
+    }
+
+    private User? ResolveCurrentUser(int? userId, string? email)
+    {
+        if (userId.HasValue)
+        {
+            var byId = _dbContext.Users.AsNoTracking().Include(item => item.Club).FirstOrDefault(item => item.Id == userId.Value);
+            if (byId is not null)
+            {
+                return byId;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return _dbContext.Users
+                .AsNoTracking()
+                .Include(item => item.Club)
+                .FirstOrDefault(item => item.Email.ToLower() == email.Trim().ToLower());
+        }
+
+        return null;
+    }
+
     private static UserResponse Map(User user) => new()
+    {
+        Id = user.Id,
+        Name = user.FullName,
+        FullName = user.FullName,
+        Email = user.Email,
+        Role = user.Role,
+        Department = user.Department,
+        Faculty = user.Faculty,
+        StudentNumber = user.StudentNumber,
+        YearClass = user.YearClass,
+        AvatarUrl = user.AvatarUrl,
+        Bio = user.Bio,
+        IsActiveMember = user.IsActiveMember,
+        ClubId = user.ClubId
+    };
+
+    private static System.Linq.Expressions.Expression<Func<User, UserResponse>> MapProjection => user => new UserResponse
     {
         Id = user.Id,
         Name = user.FullName,

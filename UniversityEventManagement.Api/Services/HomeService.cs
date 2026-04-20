@@ -33,13 +33,37 @@ public class HomeService : IHomeService
 
         var eventResponses = events.Select(EventService.MapEventResponse).ToList();
         var clubResponses = clubs.Select(ClubService.MapClubResponse).ToList();
+        var clubRatings = clubResponses.ToDictionary(item => item.Id, item => item.AverageRating);
+        var featuredEvents = eventResponses
+            .Where(item => item.ComputedStatus == "Upcoming" || item.ComputedStatus == "Ongoing")
+            .OrderByDescending(item => item.ComputedStatus == "Ongoing")
+            .ThenByDescending(item => item.StartDate)
+            .ThenByDescending(item => item.AverageRating * 6
+                + item.ReviewCount * 2
+                + item.RegistrationCount * 1.4
+                + item.ActualAttendanceCount
+                + (clubRatings.TryGetValue(item.ClubId, out var clubRating) ? clubRating * 3 : 0))
+            .Take(4)
+            .ToList();
+
+        if (featuredEvents.Count < 4)
+        {
+            var fallbackEvents = eventResponses
+                .Where(item => !featuredEvents.Any(selected => selected.Id == item.Id))
+                .OrderByDescending(item => item.AverageRating * 5
+                    + item.ReviewCount * 2
+                    + item.RegistrationCount
+                    + (clubRatings.TryGetValue(item.ClubId, out var clubRating) ? clubRating * 3 : 0))
+                .ThenByDescending(item => item.StartDate)
+                .Take(4 - featuredEvents.Count)
+                .ToList();
+
+            featuredEvents.AddRange(fallbackEvents);
+        }
 
         return new HomeFeedResponse
         {
-            PopularEvents = eventResponses
-                .OrderByDescending(item => item.RegistrationCount + item.ReviewCount * 3 + item.ActualAttendanceCount)
-                .Take(4)
-                .ToList(),
+            PopularEvents = featuredEvents,
             UpcomingEvents = eventResponses
                 .Where(item => item.StartDate >= now)
                 .OrderBy(item => item.StartDate)
