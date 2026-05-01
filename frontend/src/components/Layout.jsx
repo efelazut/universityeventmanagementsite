@@ -73,67 +73,35 @@ export function Layout({ children }) {
   }
 
   return (
-    <div className="app-shell app-shell-refined">
-      <aside className="sidebar sidebar-refined">
-        <div className="sidebar-shell">
-          <div className="sidebar-brand-block">
-            <span className="brand-mark">MÜ</span>
-            <div>
-              <strong>Maltepe Etkinlik</strong>
-              <small>Kampüs yaşamı ve kulüp akışı</small>
-            </div>
-          </div>
+    <div className="app-shell app-shell-navbar">
+      <header className="top-navbar">
+        <div className="navbar-container">
+          <div className="navbar-left">
+            <Link to="/home" className="brand brand-header">
+              <span className="brand-mark">MÜ</span>
+              <div>
+                <strong>Maltepe Etkinlik</strong>
+              </div>
+            </Link>
 
-          <div className="sidebar-nav-shell">
-            <span className="sidebar-label">Gezinme</span>
-            <nav className="sidebar-nav sidebar-nav-refined">
+            <nav className="navbar-nav">
               {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className="sidebar-link sidebar-link-simple">
-                  <strong>{item.title}</strong>
+                <NavLink key={item.to} to={item.to} className="navbar-link">
+                  {item.title}
                 </NavLink>
               ))}
             </nav>
           </div>
 
-          {user ? (
-            <div className="sidebar-card sidebar-card-compact sidebar-role-block">
-              <span className="sidebar-label">Rolünüz</span>
-              <strong>{getRoleLabel(user.role)}</strong>
-              <small>{user.role === "Student" ? "Kampüs akışını keşfedin." : "Yönetim araçları hazır."}</small>
-            </div>
-          ) : null}
-
-          <div className="sidebar-card sidebar-card-compact sidebar-api-block">
-            <span className="sidebar-label">API</span>
-            <input className="api-input" value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} />
-          </div>
-        </div>
-      </aside>
-
-      <div className="app-main">
-        <header className="topbar topbar-refined">
-          <div className="header-brand">
-            <Link to="/home" className="brand brand-header">
-              <span className="brand-mark">MÜ</span>
-              <div>
-                <p className="eyebrow">Maltepe Üniversitesi</p>
-                <strong>Maltepe Etkinlik Platformu</strong>
-                <small>Kulüpler, etkinlikler ve kampüs yaşamı tek akışta.</small>
-              </div>
-            </Link>
-          </div>
-
-          <div className="topbar-actions">
+          <div className="navbar-right">
             {user ? (
               <>
-                <button className="icon-action" type="button" onClick={() => openNotifications()}>
+                <button className="icon-action" type="button" onClick={() => openNotifications()} title="Bildirimler">
                   <span className="icon-action-mark">B</span>
-                  <span>Bildirimler</span>
                   {unreadNotificationCount ? <span className="nav-badge">{unreadNotificationCount}</span> : null}
                 </button>
-                <button className="icon-action" type="button" onClick={() => openMessages()}>
+                <button className="icon-action" type="button" onClick={() => openMessages()} title="Mesajlar">
                   <span className="icon-action-mark">M</span>
-                  <span>Mesajlar</span>
                   {unreadMessageCount ? <span className="nav-badge">{unreadMessageCount}</span> : null}
                 </button>
 
@@ -147,7 +115,7 @@ export function Layout({ children }) {
                   >
                     <span className="profile-avatar">{initials}</span>
                     <span className="avatar-copy">
-                      <strong>Hesabım</strong>
+                      <strong>{user.fullName}</strong>
                       <small>{getRoleLabel(user.role)}</small>
                     </span>
                   </button>
@@ -195,10 +163,10 @@ export function Layout({ children }) {
               </Link>
             )}
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="page-frame">{children}</main>
-      </div>
+      <main className="page-frame">{children}</main>
 
       <NotificationPanel />
       <MessageDrawer clubs={clubs} />

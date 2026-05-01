@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
@@ -23,8 +23,20 @@ export function MessagesPage() {
   const [compose, setCompose] = useState({ clubId: "", subject: "", initialMessage: "" });
   const [reply, setReply] = useState("");
 
+  const messagesEndRef = useRef(null);
+
   const threads = Array.isArray(threadsQuery.data) ? threadsQuery.data : [];
   const clubs = Array.isArray(clubsQuery.data) ? clubsQuery.data : [];
+  
+  const uniqueClubs = useMemo(() => {
+    const seen = new Set();
+    return clubs.filter(club => {
+      if (seen.has(club.id)) return false;
+      seen.add(club.id);
+      return true;
+    });
+  }, [clubs]);
+
   const selectedMessages = Array.isArray(selectedThread?.messages) ? selectedThread.messages : [];
   const totalUnreadCount = useMemo(
     () => threads.reduce((total, thread) => total + (thread.unreadCount || 0), 0),
@@ -70,7 +82,7 @@ export function MessagesPage() {
       } catch (error) {
         if (isMounted) {
           setSelectedThread(null);
-          setThreadError(error.message || "Sohbet yuklenemedi.");
+          setThreadError(error.message || "Sohbet yüklenemedi.");
         }
       } finally {
         if (isMounted) {
@@ -86,10 +98,16 @@ export function MessagesPage() {
     };
   }, [selectedId, user?.token, apiBaseUrl]);
 
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedMessages]);
+
   const handleCreateThread = async (event) => {
     event.preventDefault();
     if (!compose.clubId || !compose.subject.trim() || !compose.initialMessage.trim()) {
-      setThreadError("Kulup, konu ve ilk mesaj alanlarini doldurun.");
+      setThreadError("Kulüp, konu ve ilk mesaj alanlarını doldurun.");
       return;
     }
 
@@ -102,7 +120,7 @@ export function MessagesPage() {
       await threadsQuery.reload();
       setSelectedId(created.id);
     } catch (error) {
-      setThreadError(error.message || "Yeni sohbet baslatilamadi.");
+      setThreadError(error.message || "Yeni sohbet başlatılamadı.");
     } finally {
       setSubmitting(false);
     }
@@ -123,14 +141,14 @@ export function MessagesPage() {
       setSelectedThread(updated);
       await threadsQuery.reload();
     } catch (error) {
-      setThreadError(error.message || "Mesaj gonderilemedi.");
+      setThreadError(error.message || "Mesaj gönderilemedi.");
     } finally {
       setSubmitting(false);
     }
   };
 
   if (threadsQuery.loading || clubsQuery.loading) {
-    return <div className="loading-state loading-state-large">Mesajlar hazirlaniyor...</div>;
+    return <div className="loading-state loading-state-large">Mesajlar hazırlanıyor...</div>;
   }
 
   if (threadsQuery.error || clubsQuery.error) {
@@ -141,21 +159,21 @@ export function MessagesPage() {
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Mesajlasma</p>
-          <h1>Kuluplerle dogrudan ve duzenli iletisim kurun.</h1>
-          <p>Gelen kutusu, sohbet listesi ve aktif konusma alani ayni deneyimde bir arada.</p>
+          <p className="eyebrow">Mesajlaşma</p>
+          <h1>Kulüplerle doğrudan ve düzenli iletişim kurun.</h1>
+          <p>Gelen kutusu, sohbet listesi ve aktif konuşma alanı aynı deneyimde bir arada.</p>
         </div>
         <div className="status-panel status-panel-wide">
-          <span>Toplam okunmamis mesaj</span>
+          <span>Toplam okunmamış mesaj</span>
           <strong>{totalUnreadCount}</strong>
-          <small>Bir konusmayi actiginizda o konuya ait okunmamis sayi otomatik olarak dusurulur.</small>
+          <small>Bir konuşmayı açtığınızda o konuya ait okunmamış sayı otomatik olarak düşürülür.</small>
         </div>
       </section>
 
       {threadError ? <div className="error-panel">{threadError}</div> : null}
 
       <div className="messaging-layout">
-        <SectionCard title="Sohbet listesi" description="Guncel konusmalari buradan takip edin.">
+        <SectionCard title="Sohbet listesi" description="Güncel konuşmaları buradan takip edin.">
           <div className="stack-list">
             {threads.length ? (
               threads.map((thread) => (
@@ -169,18 +187,18 @@ export function MessagesPage() {
                     {thread.unreadCount ? <span className="thread-badge">{thread.unreadCount}</span> : null}
                   </div>
                   <span>{thread.clubName}</span>
-                  <small>{thread.lastMessagePreview || "Henuz mesaj yok."}</small>
+                  <small>{thread.lastMessagePreview || "Henüz mesaj yok."}</small>
                 </button>
               ))
             ) : (
-              <EmptyState title="Henuz sohbet yok." description="Yeni mesaj baslattiginizda sohbetler burada listelenecek." />
+              <EmptyState title="Henüz sohbet yok." description="Yeni mesaj başlattığınızda sohbetler burada listelenecek." />
             )}
           </div>
         </SectionCard>
 
-        <SectionCard title="Aktif konusma" description="Kulup yoneticileri ve ogrenciler icin pratik sohbet alani.">
+        <SectionCard title="Aktif konuşma" description="Kulüp yöneticileri ve öğrenciler için pratik sohbet alanı.">
           {threadLoading ? (
-            <div className="loading-state">Konusma yukleniyor...</div>
+            <div className="loading-state">Konuşma yükleniyor...</div>
           ) : selectedThread ? (
             <div className="conversation-shell">
               <div className="conversation-header">
@@ -196,36 +214,37 @@ export function MessagesPage() {
                     </div>
                   ))
                 ) : (
-                  <EmptyState title="Bu sohbette mesaj yok." description="Asagidaki alanla ilk mesaji gonderebilirsiniz." />
+                  <EmptyState title="Bu sohbette mesaj yok." description="Aşağıdaki alanla ilk mesajı gönderebilirsiniz." />
                 )}
+                <div ref={messagesEndRef} />
               </div>
               <form className="conversation-reply" onSubmit={handleReply}>
                 <textarea
                   rows="3"
                   value={reply}
                   onChange={(event) => setReply(event.target.value)}
-                  placeholder="Mesajinizi yazin"
+                  placeholder="Mesajınızı yazın"
                 />
                 <button className="primary-button" type="submit" disabled={submitting || !reply.trim()}>
-                  {submitting ? "Gonderiliyor..." : "Gonder"}
+                  {submitting ? "Gönderiliyor..." : "Gönder"}
                 </button>
               </form>
             </div>
           ) : (
-            <EmptyState title="Bir sohbet secin." description="Soldaki listedeki konusmalardan birini acabilir veya yeni sohbet baslatabilirsiniz." />
+            <EmptyState title="Bir sohbet seçin." description="Soldaki listedeki konuşmalardan birini açabilir veya yeni sohbet başlatabilirsiniz." />
           )}
         </SectionCard>
       </div>
 
       {user.role === "Student" ? (
-        <SectionCard title="Kulube mesaj gonder" description="Ogrenciler bir kulube dogrudan yeni sohbet baslatabilir.">
+        <SectionCard title="Kulübe mesaj gönder" description="Öğrenciler bir kulüple doğrudan yeni sohbet başlatabilir.">
           <form className="management-form" onSubmit={handleCreateThread}>
             <div className="form-grid two-column">
               <label>
-                Kulup
+                Kulüp
                 <select value={compose.clubId} onChange={(event) => setCompose({ ...compose, clubId: event.target.value })}>
-                  <option value="">Kulup secin</option>
-                  {clubs.map((club) => (
+                  <option value="">Kulüp seçin</option>
+                  {uniqueClubs.map((club) => (
                     <option key={club.id} value={club.id}>
                       {club.name}
                     </option>
@@ -238,7 +257,7 @@ export function MessagesPage() {
               </label>
             </div>
             <label>
-              Ilk mesaj
+              İlk mesaj
               <textarea
                 rows="4"
                 value={compose.initialMessage}
@@ -247,7 +266,7 @@ export function MessagesPage() {
             </label>
             <div className="form-actions">
               <button className="primary-button" type="submit" disabled={submitting}>
-                {submitting ? "Gonderiliyor..." : "Sohbet Baslat"}
+                {submitting ? "Gönderiliyor..." : "Sohbet Başlat"}
               </button>
             </div>
           </form>

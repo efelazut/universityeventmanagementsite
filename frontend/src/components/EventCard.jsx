@@ -54,60 +54,49 @@ export function EventCard({ event, actionLabel = "Etkinliği İncele", actionTo,
   const [imageSrc, setImageSrc] = useState(safeEvent.imageUrl || fallbackImage);
 
   return (
-    <article className={`event-card event-card-media ${state.cardClass} ${compact ? "event-card-compact" : ""}`.trim()}>
+    <article className={`event-card ${compact ? "event-card-compact" : ""}`.trim()}>
       <div className="event-media">
         <img
           src={imageSrc}
           alt={safeEvent.title}
           loading="lazy"
+          className="event-media-img"
           onError={() => {
             if (imageSrc !== fallbackImage) {
               setImageSrc(fallbackImage);
             }
           }}
         />
-        <div className="event-visual-overlay" />
-        <div className="event-media-overlay">
-          <span className={`event-state-badge ${state.cardClass}`}>
-            {state.badgeText}
-            {state.cardClass === "event--active" ? <span className="live-pulse-dot" /> : null}
-          </span>
-          {safeEvent.category ? <span className="pill tone-dark">{safeEvent.category}</span> : null}
-        </div>
       </div>
 
       <div className="event-card-body">
         <div className="event-card-top">
+          <div className="event-badges">
+            <span className={`pill ${state.cardClass === "event--active" ? "tone-teal" : "tone-dark"}`}>
+              {state.badgeText}
+              {state.cardClass === "event--active" ? <span className="live-pulse-dot" /> : null}
+            </span>
+            {safeEvent.category ? <span className="pill tone-blue">{safeEvent.category}</span> : null}
+          </div>
           <p className="event-club-name">{safeEvent.clubName}</p>
-          <h3>{safeEvent.title}</h3>
-          <p className="event-summary">{safeEvent.description}</p>
+          <h3 className="event-title">{safeEvent.title}</h3>
+          <p className="event-summary line-clamp-2">{safeEvent.description}</p>
         </div>
 
-        <div className="event-info-grid">
-          <div>
-            <span>Tarih</span>
-            <strong>{formatEventDate(safeEvent.startDate)}</strong>
+        <div className="event-info-list">
+          <div className="event-info-item">
+            <strong>Tarih:</strong> <span>{formatEventDate(safeEvent.startDate)}</span>
           </div>
-          <div>
-            <span>Saat</span>
-            <strong>{formatEventTimeRange(safeEvent.startDate, safeEvent.endDate)}</strong>
+          <div className="event-info-item">
+            <strong>Saat:</strong> <span>{formatEventTimeRange(safeEvent.startDate, safeEvent.endDate)}</span>
           </div>
-          <div>
-            <span>Yer</span>
-            <strong>{safeEvent.format === "Online" ? "Online" : safeEvent.locationDetails || `${safeEvent.roomName} / ${safeEvent.building}`}</strong>
-          </div>
-          <div>
-            <span>İlgi</span>
-            {safeEvent.averageRating ? (
-              <RatingStars value={safeEvent.averageRating} compact />
-            ) : (
-              <strong>{safeEvent.registrationCount} kayıt</strong>
-            )}
+          <div className="event-info-item">
+            <strong>Konum:</strong> <span>{safeEvent.format === "Online" ? "Online" : safeEvent.locationDetails || `${safeEvent.roomName}`}</span>
           </div>
         </div>
 
         <div className="card-actions">
-          <Link className="primary-button link-button" to={actionTo || `/events/${safeEvent.id}`}>
+          <Link className="primary-button link-button full-width-button" to={actionTo || `/events/${safeEvent.id}`}>
             {actionLabel}
           </Link>
           {footer}

@@ -60,8 +60,7 @@ export function ClubsPage() {
       <section className="page-hero">
         <div>
           <p className="eyebrow">Kulüpler</p>
-          <h1>Kampüs toplulukları</h1>
-          <p>Kulüpleri güvenli ve sade bir listede inceleyin.</p>
+          <h1>Kampüs Toplulukları</h1>
         </div>
         <div className="hero-metrics hero-metrics-compact">
           <StatCard title="Toplam Kulüp" value={clubs.length} accent="teal" subtitle="Listede" />
@@ -69,22 +68,23 @@ export function ClubsPage() {
         </div>
       </section>
 
-      <SectionCard title="Kulüp Vitrini" description="Topluluk kartları.">
+      <div className="club-grid">
         {clubs.length ? (
-          <div className="club-showcase-grid">
-            {clubs.map((club) => (
-              <article key={club.id || club.name} className="club-showcase-card">
-                <div className="club-banner">
+          clubs.map((club) => (
+            <article key={club.id || club.name} className="club-card">
+              <div className="club-card-banner">
+                <img
+                  src={club.bannerUrl || club.avatarUrl || clubFallbackImage}
+                  alt={club.name}
+                  onError={(event) => {
+                    event.currentTarget.src = clubFallbackImage;
+                  }}
+                />
+              </div>
+              <div className="club-card-body">
+                <div className="club-card-header">
                   <img
-                    src={club.bannerUrl || club.avatarUrl || clubFallbackImage}
-                    alt={club.name}
-                    onError={(event) => {
-                      event.currentTarget.src = clubFallbackImage;
-                    }}
-                  />
-                </div>
-                <div className="club-showcase-header">
-                  <img
+                    className="club-card-logo"
                     src={club.avatarUrl || clubFallbackImage}
                     alt={club.name}
                     onError={(event) => {
@@ -92,42 +92,26 @@ export function ClubsPage() {
                     }}
                   />
                   <div>
-                    <span className={`pill ${club.isActive ? "tone-teal" : "tone-dark"}`}>{club.category || "Kulüp"}</span>
-                    <h3>{club.name}</h3>
+                    <h3 className="club-card-title">{club.name}</h3>
+                    <span className={`pill ${club.isActive ? "tone-blue" : "tone-dark"}`}>{club.category || "Kulüp"}</span>
                   </div>
                 </div>
-                <p>{club.showcaseSummary || club.description}</p>
-                <div className="club-meta-grid">
-                  <div>
-                    <span>Üye</span>
-                    <strong>{club.memberCount}</strong>
+                <p className="club-card-desc line-clamp-2">{club.showcaseSummary || club.description}</p>
+                <div className="club-card-footer">
+                  <div className="club-meta">
+                    <strong>{club.memberCount} Üye</strong>
                   </div>
-                  <div>
-                    <span>Puan</span>
-                    <RatingStars value={club.averageRating} reviewCount={club.reviewCount} compact />
-                  </div>
+                  <Link className="ghost-button link-button" to={`/clubs/${club.id}`}>
+                    Detay
+                  </Link>
                 </div>
-                <div className="stack-list compact-list">
-                  {club.recentEventTitles.length ? (
-                    club.recentEventTitles.map((title) => (
-                      <div key={`${club.id}-${title}`} className="list-row compact-row">
-                        <strong>{title}</strong>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState title="Henüz etkinlik yok." description="Yeni etkinlikler burada görünür." icon="Et" />
-                  )}
-                </div>
-                <Link className="primary-button link-button" to={`/clubs/${club.id}`}>
-                  Kulübü Görüntüle
-                </Link>
-              </article>
-            ))}
-          </div>
+              </div>
+            </article>
+          ))
         ) : (
           <EmptyState title="Kulüp bulunamadı." description="Kulüp verisi geldiğinde bu alan dolacak." icon="Kl" />
         )}
-      </SectionCard>
+      </div>
     </div>
   );
 }

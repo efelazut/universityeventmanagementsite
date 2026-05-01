@@ -26,9 +26,9 @@ export function HomePage() {
     <div className="page-stack">
       <section className="page-hero home-hero">
         <div>
-          <p className="eyebrow">Maltepe Üniversitesi</p>
-          <h1>Kampüs akışını tek bakışta görün.</h1>
-          <p>Etkinlikler, kulüpler ve takvim aynı ekranda.</p>
+          <p className="eyebrow">Ana Sayfa</p>
+          <h1>Kampüs Akışı</h1>
+          <p>Tüm etkinlikler ve kulüpler bir arada.</p>
           <div className="inline-actions">
             <Link className="primary-button link-button" to="/events">Etkinlikler</Link>
             <Link className="ghost-button link-button" to="/clubs">Kulüpler</Link>
@@ -92,36 +92,44 @@ export function HomePage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Öne Çıkan Kulüpler" description="Aktif kulüp vitrini.">
-        <div className="club-showcase-grid">
+      <SectionCard title="Öne Çıkan Kulüpler" description="Aktif topluluklarımızı keşfedin.">
+        <div className="club-grid">
           {feed.featuredClubs.map((club) => (
-            <article key={club.id} className="club-showcase-card">
-              <div className="club-showcase-header">
-                <img src={club.avatarUrl} alt={club.name} />
-                <div>
-                  <span className="pill tone-blue">{club.category || "Topluluk"}</span>
-                  <h3>{club.name}</h3>
-                </div>
+            <article key={club.id || club.name} className="club-card">
+              <div className="club-card-banner">
+                <img
+                  src={club.bannerUrl || club.avatarUrl || "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80"}
+                  alt={club.name}
+                  onError={(event) => {
+                    event.currentTarget.src = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80";
+                  }}
+                />
               </div>
-              <p>{club.showcaseSummary || club.description}</p>
-              <div className="club-meta-grid">
-                <div>
-                  <span>Üye</span>
-                  <strong>{club.memberCount}</strong>
-                </div>
-                <div>
-                  <span>Puan</span>
-                  <RatingStars value={club.averageRating} reviewCount={club.reviewCount} compact />
-                </div>
-              </div>
-              <div className="stack-list compact-list">
-                {club.recentEventTitles.map((title) => (
-                  <div key={`${club.id}-${title}`} className="list-row compact-row">
-                    <strong>{title}</strong>
+              <div className="club-card-body">
+                <div className="club-card-header">
+                  <img
+                    className="club-card-logo"
+                    src={club.avatarUrl || "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80"}
+                    alt={club.name}
+                    onError={(event) => {
+                      event.currentTarget.src = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80";
+                    }}
+                  />
+                  <div>
+                    <h3 className="club-card-title">{club.name}</h3>
+                    <span className="pill tone-blue">{club.category || "Topluluk"}</span>
                   </div>
-                ))}
+                </div>
+                <p className="club-card-desc line-clamp-2">{club.showcaseSummary || club.description}</p>
+                <div className="club-card-footer">
+                  <div className="club-meta">
+                    <strong>{club.memberCount} Üye</strong>
+                  </div>
+                  <Link className="ghost-button link-button" to={`/clubs/${club.id}`}>
+                    Detay
+                  </Link>
+                </div>
               </div>
-              <Link className="primary-button link-button" to={`/clubs/${club.id}`}>Kulübü Aç</Link>
             </article>
           ))}
         </div>

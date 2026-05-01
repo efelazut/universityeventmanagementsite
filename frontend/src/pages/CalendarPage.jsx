@@ -72,8 +72,8 @@ export function CalendarPage() {
     [allEvents, selectedDay]
   );
 
-  if (eventsQuery.loading) {
-    return <div className="loading-state loading-state-large">Takvim hazirlaniyor...</div>;
+    if (eventsQuery.loading) {
+    return <div className="loading-state loading-state-large">Takvim hazırlanıyor...</div>;
   }
 
   if (eventsQuery.error) {
@@ -85,31 +85,30 @@ export function CalendarPage() {
       <section className="page-hero page-hero-calendar">
         <div>
           <p className="eyebrow">Takvim</p>
-          <h1>Kampusteki etkinlikleri gun gun takip edin.</h1>
-          <p>Etkinlik olan gunler izgara uzerinde isaretlenir, bir gun secildiginde sag tarafta o gunun tum etkinlikleri listelenir.</p>
+          <h1>Kampüsteki etkinlikleri gün gün takip edin.</h1>
+          <p>Etkinlik olan günler işaretlenir, bir gün seçildiğinde o günün tüm etkinlikleri listelenir.</p>
         </div>
         <div className="status-panel status-panel-wide">
           <span>Bu ay toplam etkinlik</span>
           <strong>{allEvents.filter((event) => event.parsedStartDate.getMonth() === currentMonth.getMonth()).length}</strong>
-          <small>Veri gelmese bile takvim bos durumla calisir ve sayfayi bozmaz.</small>
         </div>
       </section>
 
       <div className="calendar-layout calendar-layout-wide">
         <SectionCard
           title={currentMonth.toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}
-          description="Takvim dekoratif degil; gun secimi ve etkinlik yogunlugunu gosteren aktif bir planlama alani."
+          description="Takvim üzerinden planlarınızı yönetin."
           action={
             <div className="inline-actions">
               <button className="ghost-button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
-                Onceki Ay
+                Önceki Ay
               </button>
               <button className="ghost-button" onClick={() => {
                 const today = new Date();
                 setCurrentMonth(today);
                 setSelectedDay(today);
               }}>
-                Bugun
+                Bugün
               </button>
               <button className="ghost-button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
                 Sonraki Ay
@@ -118,7 +117,7 @@ export function CalendarPage() {
           }
         >
           <div className="month-grid">
-            {["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"].map((label) => (
+            {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((label) => (
               <div key={label} className="month-grid-label">
                 {label}
               </div>
@@ -143,7 +142,7 @@ export function CalendarPage() {
                       <small>{dayEvents.length} etkinlik</small>
                     </div>
                   ) : (
-                    <small className="month-grid-empty">Bos</small>
+                    <small className="month-grid-empty">Boş</small>
                   )}
                 </button>
               );
@@ -153,7 +152,7 @@ export function CalendarPage() {
 
         <SectionCard
           title={selectedDay.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })}
-          description="Secili gunun etkinlikleri, durum bilgisi ve hizli gecis baglantilari."
+          description="Seçili günün etkinlikleri ve durum bilgisi."
         >
           <div className="stack-list">
             {selectedEvents.length ? (
@@ -163,15 +162,15 @@ export function CalendarPage() {
                   <Link key={event.id} className="list-row" to={`/events/${event.id}`}>
                     <strong>{event.title}</strong>
                     <span>{event.clubName} • {formatEventTimeRange(event.startDate, event.endDate)}</span>
-                    <span>{event.locationDetails || `${event.roomName || "Salon bilgisi yok"} / ${event.building || "Kampus"}`}</span>
+                    <span>{event.locationDetails || `${event.roomName || "Salon bilgisi yok"} / ${event.building || "Kampüs"}`}</span>
                     <span className={`pill ${state.tone}`}>{state.label}</span>
                   </Link>
                 );
               })
             ) : allEvents.length ? (
-              <EmptyState title="Bu gun icin etkinlik yok." description="Takvimde baska bir gune tiklayarak o gunun planlarini gorebilirsiniz." />
+              <EmptyState title="Bugün için etkinlik yok." description="Takvimde başka bir güne tıklayarak o günün planlarını görebilirsiniz." />
             ) : (
-              <EmptyState title="Takvimde gosterilecek etkinlik yok." description="Etkinlikler eklendiginde burada otomatik olarak listelenecek." />
+              <EmptyState title="Takvimde gösterilecek etkinlik yok." description="Etkinlikler eklendiğinde burada otomatik olarak listelenecek." />
             )}
           </div>
         </SectionCard>

@@ -84,7 +84,7 @@ export function EventDetailPage() {
   const eventEnded = item.computedStatus === "Completed";
   const eventStarted = item.computedStatus === "Ongoing" || item.computedStatus === "Completed";
   const alreadyReviewed = reviews.some((review) => review.userId === user?.id);
-  const canReview = user?.role === "Student" && registrationInfo?.attended && eventEnded && !alreadyReviewed;
+  const canReview = user && registrationInfo?.attended && eventEnded && !alreadyReviewed;
   const sortedReviews = [...reviews].sort((left, right) => {
     if (reviewFilter === "highest") return right.rating - left.rating;
     return new Date(right.createdAt) - new Date(left.createdAt);
@@ -191,15 +191,22 @@ export function EventDetailPage() {
             {item.clubId ? <Link className="ghost-button link-button" to={`/clubs/${item.clubId}`}>Kulüp Sayfası</Link> : null}
             {canManageEvent ? <Link className="ghost-button link-button" to={`/events/${item.id}/edit`}>Etkinliği Düzenle</Link> : null}
             {canManageEvent ? <button className="ghost-button" onClick={handleDelete}>Etkinliği Sil</button> : null}
-            {user?.role === "Student" && !registrationInfo ? (
+            {user && !registrationInfo ? (
               <button className="primary-button" onClick={handleRegister} disabled={eventStarted}>
-                {item.requiresApproval ? "Başvuru Gönder" : "Katılım Oluştur"}
+                {item.requiresApproval ? "Başvuru Gönder" : "Katıl"}
               </button>
             ) : null}
-            {user?.role === "Student" && registrationInfo ? (
-              <button className="ghost-button" onClick={handleCancelRegistration} disabled={eventStarted}>
-                {eventStarted ? "Etkinlik Başladı" : "Kaydı İptal Et"}
-              </button>
+            {user && registrationInfo ? (
+              <div className="status-badge-group">
+                <span className={`pill ${registrationInfo.status === "Pending" ? "tone-gold" : "tone-blue"}`}>
+                  {registrationInfo.status === "Pending" ? "Başvuru Beklemede" : "Kayıtlısınız"}
+                </span>
+                {!eventStarted && (
+                  <button className="ghost-button mini-button" title="İptal Et" onClick={handleCancelRegistration}>
+                    ✕
+                  </button>
+                )}
+              </div>
             ) : null}
           </div>
         </div>

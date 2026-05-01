@@ -122,8 +122,7 @@ export function EventsPage() {
       <section className="page-hero">
         <div>
           <p className="eyebrow">Etkinlikler</p>
-          <h1>Etkinlik akışı</h1>
-          <p>Tüm etkinlikleri filtreleyip hızlıca inceleyin.</p>
+          <h1>Kampüs Takvimi</h1>
         </div>
         <div className="hero-actions">
           {user && ["Admin", "ClubManager"].includes(user.role) ? (

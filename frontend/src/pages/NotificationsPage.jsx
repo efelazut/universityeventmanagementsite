@@ -41,7 +41,7 @@ export function NotificationsPage() {
   };
 
   if (notificationsQuery.loading) {
-    return <div className="loading-state loading-state-large">Bildirimler hazirlaniyor...</div>;
+    return <div className="loading-state loading-state-large">Bildirimler hazırlanıyor...</div>;
   }
 
   if (notificationsQuery.error) {
@@ -53,17 +53,17 @@ export function NotificationsPage() {
       <section className="page-hero">
         <div>
           <p className="eyebrow">Bildirimler</p>
-          <h1>Kulup ve etkinlik akisindaki guncellemeleri tek merkezden takip edin.</h1>
-          <p>Uzun listelerde bile tasma yapmayan, okunakli ve duruma gore ayrisan bildirim akisi.</p>
+          <h1>Kulüp ve etkinlik akışındaki güncellemeleri tek merkezden takip edin.</h1>
+          <p>Tüm önemli gelişmeler tek bir yerde.</p>
         </div>
         <div className="status-panel status-panel-wide">
-          <span>Okunmamis bildirim</span>
+          <span>Okunmamış bildirim</span>
           <strong>{unreadCount}</strong>
-          <small>Mesaj, basvuru karari ve etkinlik guncellemeleri burada toplanir.</small>
+          <small>Mesaj, başvuru kararı ve etkinlik güncellemeleri burada toplanır.</small>
         </div>
       </section>
 
-      <SectionCard title="Son bildirimler" description="Liste veri yokken bos durum, veri geldiyse dayanikli kart yapisiyla gosterilir.">
+      <SectionCard title="Son bildirimler" description="Okunmamış ve geçmiş bildirimleriniz.">
         <div className="stack-list">
           {notifications.length ? (
             notifications.map((notification) => {
@@ -87,7 +87,7 @@ export function NotificationsPage() {
                         }}
                         disabled={processingId === notification.id}
                       >
-                        {processingId === notification.id ? "Isleniyor..." : "Okundu isaretle"}
+                        {processingId === notification.id ? "İşleniyor..." : "Okundu işaretle"}
                       </button>
                     ) : null}
                   </div>
@@ -105,7 +105,7 @@ export function NotificationsPage() {
               return <div key={notification.id}>{content}</div>;
             })
           ) : (
-            <EmptyState title="Henuz bildiriminiz yok." description="Kulup ve etkinlik hareketleri oldugunda burada gorunecek." />
+            <EmptyState title="Henüz bildiriminiz yok." description="Kulüp ve etkinlik hareketleri olduğunda burada görünecek." />
           )}
         </div>
       </SectionCard>
