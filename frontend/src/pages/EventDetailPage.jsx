@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { RatingStars } from "../components/RatingStars";
 import { SectionCard } from "../components/SectionCard";
-import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -26,6 +26,13 @@ const eventFallbackImage = "https://images.unsplash.com/photo-1511578314322-379a
 function isOptionalAuthError(message) {
   const value = String(message || "").toLowerCase();
   return value.includes("user not found") || value.includes("401") || value.includes("unauthorized");
+}
+
+function getRegistrationStatusLabel(status) {
+  if (status === "Approved") return "Onaylandı";
+  if (status === "Pending") return "Beklemede";
+  if (status === "Rejected") return "Reddedildi";
+  return status || "Durum yok";
 }
 
 export function EventDetailPage() {
@@ -60,12 +67,20 @@ export function EventDetailPage() {
     return activity.registeredEvents.find((item) => item.id === Number(id)) || null;
   }, [activity.registeredEvents, id, user]);
 
-  if (eventQuery.loading || regQuery.loading || reviewsQuery.loading) {
+  if (eventQuery.loading) {
     return <div className="loading-state loading-state-large">Etkinlik ayrıntıları yükleniyor...</div>;
   }
 
-  if (eventQuery.error || regQuery.error || reviewsQuery.error) {
-    return <div className="error-panel">{eventQuery.error || regQuery.error || reviewsQuery.error}</div>;
+  if (eventQuery.error) {
+    return (
+      <ErrorState
+        title="Etkinlik bulunamadı veya yüklenemedi"
+        description="Etkinlik detay bilgileri şu anda alınamıyor."
+        error={eventQuery.error}
+        onRetry={eventQuery.reload}
+        icon="Et"
+      />
+    );
   }
 
   const item = eventQuery.data;
@@ -77,8 +92,8 @@ export function EventDetailPage() {
     );
   }
 
-  const registrations = Array.isArray(regQuery.data) ? regQuery.data : [];
-  const reviews = Array.isArray(reviewsQuery.data) ? reviewsQuery.data : [];
+  const registrations = regQuery.error ? [] : (Array.isArray(regQuery.data) ? regQuery.data : []);
+  const reviews = reviewsQuery.error ? [] : (Array.isArray(reviewsQuery.data) ? reviewsQuery.data : []);
   const visualState = getEventVisualState(item);
   const canManageEvent = Boolean(user && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === item.clubId)));
   const eventEnded = item.computedStatus === "Completed";
@@ -218,14 +233,16 @@ export function EventDetailPage() {
         </SectionCard>
       ) : null}
 
-      {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
+      {regQuery.error || reviewsQuery.error ? (
+        <div className="notice-box">
+          Etkinliğe ait bazı yardımcı bilgiler şu anda yüklenemedi. Detay sayfası kullanılmaya devam ediyor.
+          <button className="mini-button" type="button" onClick={() => Promise.all([regQuery.reload(), reviewsQuery.reload()])}>
+            Tekrar dene
+          </button>
+        </div>
+      ) : null}
 
-      <div className="stat-grid">
-        <StatCard title="Kayıt" value={`${item.registrationCount}/${item.capacity}`} accent="teal" subtitle={`${item.pendingRegistrationCount} bekleyen başvuru`} />
-        <StatCard title="Puan" value={<RatingStars value={item.averageRating} reviewCount={item.reviewCount} compact />} accent="blue" subtitle="Etkinlik ilgisi" />
-        <StatCard title="Biçim" value={item.format} accent="orange" subtitle={item.campus || "Kampüs bilgisi"} />
-        <StatCard title="Ücret" value={item.isFree ? "Ücretsiz" : `₺${item.price}`} accent="rose" subtitle={item.requiresApproval ? "Onaylı katılım" : "Hızlı kayıt"} />
-      </div>
+      {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
       <div className="two-column">
         <SectionCard title="Etkinlik Bilgileri" description="Planlama ve konum.">
@@ -260,7 +277,7 @@ export function EventDetailPage() {
               <div key={registration.id} className="list-row list-row-split">
                 <div>
                   <strong>{registration.userFullName || `Öğrenci #${registration.userId}`}</strong>
-                  <span>{registration.status} • {new Date(registration.registeredAt).toLocaleDateString("tr-TR")}</span>
+                  <span>{getRegistrationStatusLabel(registration.status)} • {new Date(registration.registeredAt).toLocaleDateString("tr-TR")}</span>
                 </div>
                 <div className="inline-actions">
                   {canManageEvent && registration.status === "Pending" ? (

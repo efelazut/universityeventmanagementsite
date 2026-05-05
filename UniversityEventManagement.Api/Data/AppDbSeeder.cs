@@ -8,6 +8,7 @@ public static partial class AppDbSeeder
     {
         if (await dbContext.Users.AnyAsync())
         {
+            await RestoreMissingDemoDataAsync(dbContext);
             return;
         }
 
@@ -58,5 +59,66 @@ public static partial class AppDbSeeder
         var readStates = CreateReadStates(now, threads, users);
         dbContext.MessageThreadReadStates.AddRange(readStates);
         await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task RestoreMissingDemoDataAsync(AppDbContext dbContext)
+    {
+        var clubs = await dbContext.Clubs.OrderBy(club => club.Id).ToArrayAsync();
+        var rooms = await dbContext.Rooms.OrderBy(room => room.Id).ToArrayAsync();
+        var users = await dbContext.Users.OrderBy(user => user.Id).ToArrayAsync();
+
+        if (clubs.Length < 4 || rooms.Length < 8 || users.Length < 12)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var events = await dbContext.Events.OrderBy(@event => @event.Id).ToListAsync();
+
+        if (events.Count == 0)
+        {
+            events = CreateEvents(now, clubs, rooms);
+            dbContext.Events.AddRange(events);
+            await dbContext.SaveChangesAsync();
+        }
+
+        if (!await dbContext.Registrations.AnyAsync())
+        {
+            dbContext.Registrations.AddRange(CreateRegistrations(now, users, events));
+            await dbContext.SaveChangesAsync();
+        }
+
+        if (!await dbContext.EventReviews.AnyAsync())
+        {
+            dbContext.EventReviews.AddRange(CreateReviews(now, users, events));
+            await dbContext.SaveChangesAsync();
+        }
+
+        if (!await dbContext.Notifications.AnyAsync())
+        {
+            dbContext.Notifications.AddRange(CreateNotifications(now, users, events));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var threads = await dbContext.MessageThreads.OrderBy(thread => thread.Id).ToListAsync();
+
+        if (threads.Count == 0)
+        {
+            threads = CreateThreads(now, clubs, users);
+            dbContext.MessageThreads.AddRange(threads);
+            await dbContext.SaveChangesAsync();
+        }
+
+        if (!await dbContext.Messages.AnyAsync())
+        {
+            dbContext.Messages.AddRange(CreateMessages(now, threads, users));
+            await dbContext.SaveChangesAsync();
+        }
+
+        if (!await dbContext.MessageThreadReadStates.AnyAsync())
+        {
+            dbContext.MessageThreadReadStates.AddRange(CreateReadStates(now, threads, users));
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

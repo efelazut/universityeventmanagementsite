@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { EventCard } from "../components/EventCard";
 import { RatingStars } from "../components/RatingStars";
 import { SectionCard } from "../components/SectionCard";
@@ -113,7 +114,15 @@ export function ClubDetailPage() {
   }
 
   if (club.error) {
-    return <div className="error-panel">{club.error}</div>;
+    return (
+      <ErrorState
+        title="Kulüp bulunamadı veya yüklenemedi"
+        description="Kulüp profil bilgileri şu anda alınamıyor."
+        error={club.error}
+        onRetry={club.reload}
+        icon="Kl"
+      />
+    );
   }
 
   const clubData = club.data || {};
@@ -302,13 +311,6 @@ export function ClubDetailPage() {
       ) : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
-      <div className="stat-grid">
-        <StatCard title="Aktif Üye" value={statsData.activeMemberCount} accent="teal" subtitle="Topluluk ağı" />
-        <StatCard title="Etkinlik" value={statsData.eventCount} accent="blue" subtitle="Toplam üretim" />
-        <StatCard title="Katılım" value={statsData.totalRegistrations} accent="orange" subtitle="Kayıt sayısı" />
-        <StatCard title="Kulüp Puanı" value={<RatingStars value={clubData.averageRating} reviewCount={clubData.reviewCount} compact />} accent="rose" subtitle="Etkinlik değerlendirmeleri" />
-      </div>
-
       <div className="two-column">
         <SectionCard title="Kulüp Ekibi" description="Başkan, yöneticiler ve üyeler.">
           <div className="team-section-stack">
@@ -363,6 +365,15 @@ export function ClubDetailPage() {
         ) : (
           <EmptyState title="Henüz etkinlik yok." description="Yeni etkinlikler burada listelenecek." icon="Et" />
         )}
+      </SectionCard>
+
+      <SectionCard title="Detaylar">
+        <div className="stat-grid club-detail-stats">
+          <StatCard title="Aktif Üye" value={statsData.activeMemberCount} accent="teal" subtitle="Topluluk ağı" />
+          <StatCard title="Etkinlik" value={statsData.eventCount} accent="blue" subtitle="Toplam üretim" />
+          <StatCard title="Katılım" value={statsData.totalRegistrations} accent="orange" subtitle="Kayıt sayısı" />
+          <StatCard title="Kulüp Puanı" value={<RatingStars value={clubData.averageRating} reviewCount={clubData.reviewCount} compact />} accent="rose" subtitle="Etkinlik değerlendirmeleri" />
+        </div>
       </SectionCard>
 
       <ConfirmDialog

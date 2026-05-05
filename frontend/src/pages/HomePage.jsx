@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { EventCard } from "../components/EventCard";
-import { RatingStars } from "../components/RatingStars";
 import { SectionCard } from "../components/SectionCard";
-import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { fetchHomeFeed } from "../services/resourceService";
@@ -17,39 +16,36 @@ export function HomePage() {
   }
 
   if (feedQuery.error) {
-    return <div className="error-panel">{feedQuery.error}</div>;
+    return (
+      <ErrorState
+        title="Ana sayfa verileri yüklenemedi"
+        description="Etkinlik ve kulüp özetleri şu anda alınamıyor."
+        error={feedQuery.error}
+        onRetry={feedQuery.reload}
+      />
+    );
   }
 
-  const feed = feedQuery.data;
+  const feed = feedQuery.data || {
+    activeClubCount: 0,
+    upcomingEventCount: 0,
+    totalParticipationCount: 0,
+    activeStudentCount: 0,
+    popularEvents: [],
+    ongoingEvents: [],
+    upcomingEvents: [],
+    featuredClubs: []
+  };
 
   return (
     <div className="page-stack">
-      <section className="page-hero home-hero">
-        <div>
-          <p className="eyebrow">Ana Sayfa</p>
-          <h1>Kampüs Akışı</h1>
-          <p>Tüm etkinlikler ve kulüpler bir arada.</p>
-          <div className="inline-actions">
-            <Link className="primary-button link-button" to="/events">Etkinlikler</Link>
-            <Link className="ghost-button link-button" to="/clubs">Kulüpler</Link>
-          </div>
-        </div>
-        <div className="hero-metrics">
-          <StatCard title="Aktif Kulüp" value={feed.activeClubCount} accent="teal" subtitle="Topluluklar" />
-          <StatCard title="Yaklaşan" value={feed.upcomingEventCount} accent="blue" subtitle="Takvimde" />
-          <StatCard title="Katılım" value={feed.totalParticipationCount} accent="orange" subtitle="Toplam kayıt" />
-          <StatCard title="Aktif Öğrenci" value={feed.activeStudentCount} accent="rose" subtitle="Platformda" />
-        </div>
-      </section>
-
-      <SectionCard title="Öne Çıkan Etkinlikler" description="Yeni ve yüksek puanlı etkinlikler.">
+      <SectionCard title="Öne Çıkan Etkinlikler">
         {feed.popularEvents.length ? (
           <div className="event-grid featured-grid">
             {feed.popularEvents.map((event) => (
               <EventCard
                 key={event.id}
                 event={event}
-                footer={<span className="mini-metric">{event.registrationCount} kayıt</span>}
               />
             ))}
           </div>
@@ -59,7 +55,7 @@ export function HomePage() {
       </SectionCard>
 
       <div className="two-column">
-        <SectionCard title="Devam Edenler" description="Şu anda canlı olan etkinlikler.">
+        <SectionCard title="Devam Edenler">
           <div className="stack-list">
             {feed.ongoingEvents.length ? (
               feed.ongoingEvents.map((event) => (
@@ -75,7 +71,7 @@ export function HomePage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Yaklaşanlar" description="Sıradaki planlar.">
+        <SectionCard title="Yaklaşanlar">
           <div className="stack-list">
             {feed.upcomingEvents.length ? (
               feed.upcomingEvents.slice(0, 5).map((event) => (
@@ -92,7 +88,7 @@ export function HomePage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Öne Çıkan Kulüpler" description="Aktif topluluklarımızı keşfedin.">
+      <SectionCard title="Öne Çıkan Kulüpler">
         <div className="club-grid">
           {feed.featuredClubs.map((club) => (
             <article key={club.id || club.name} className="club-card">

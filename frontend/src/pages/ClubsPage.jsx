@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
-import { RatingStars } from "../components/RatingStars";
-import { SectionCard } from "../components/SectionCard";
-import { StatCard } from "../components/StatCard";
+import { ErrorState } from "../components/ErrorState";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { fetchClubs } from "../services/resourceService";
@@ -46,28 +44,20 @@ export function ClubsPage() {
 
   if (clubsQuery.error) {
     return (
-      <SectionCard title="Kulüpler yüklenemedi" description="Liste şu anda alınamıyor.">
-        <EmptyState title="Kulüp verisine ulaşılamadı." description={clubsQuery.error || "Daha sonra tekrar deneyin."} icon="Kl" />
-      </SectionCard>
+      <ErrorState
+        title="Kulüpler yüklenemedi"
+        description="Kulüp listesi şu anda alınamıyor."
+        error={clubsQuery.error}
+        onRetry={clubsQuery.reload}
+        icon="Kl"
+      />
     );
   }
 
   const clubs = Array.isArray(clubsQuery.data) ? clubsQuery.data.filter(Boolean).map(normalizeClub) : [];
-  const activeClubs = clubs.filter((club) => club.isActive);
 
   return (
     <div className="page-stack">
-      <section className="page-hero">
-        <div>
-          <p className="eyebrow">Kulüpler</p>
-          <h1>Kampüs Toplulukları</h1>
-        </div>
-        <div className="hero-metrics hero-metrics-compact">
-          <StatCard title="Toplam Kulüp" value={clubs.length} accent="teal" subtitle="Listede" />
-          <StatCard title="Aktif Kulüp" value={activeClubs.length} accent="blue" subtitle="Görünür topluluk" />
-        </div>
-      </section>
-
       <div className="club-grid">
         {clubs.length ? (
           clubs.map((club) => (

@@ -4,7 +4,7 @@ export function getEventVisualState(event) {
   if (state === "Cancelled") {
     return {
       label: "İptal Edildi",
-      badgeText: "⚠ İptal",
+      badgeText: "İptal",
       tone: "tone-rose",
       cardClass: "event--cancelled"
     };
@@ -13,7 +13,7 @@ export function getEventVisualState(event) {
   if (state === "Ongoing") {
     return {
       label: "Devam Ediyor",
-      badgeText: "● Devam Ediyor",
+      badgeText: "Devam Ediyor",
       tone: "tone-gold",
       cardClass: "event--active"
     };
@@ -22,7 +22,7 @@ export function getEventVisualState(event) {
   if (state === "Completed") {
     return {
       label: "Tamamlandı",
-      badgeText: "✓ Tamamlandı",
+      badgeText: "Tamamlandı",
       tone: "tone-dark",
       cardClass: "event--past"
     };

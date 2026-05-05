@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -77,7 +78,15 @@ export function CalendarPage() {
   }
 
   if (eventsQuery.error) {
-    return <div className="error-panel">{eventsQuery.error}</div>;
+    return (
+      <ErrorState
+        title="Takvim yüklenemedi"
+        description="Etkinlik takvimi şu anda alınamıyor."
+        error={eventsQuery.error}
+        onRetry={eventsQuery.reload}
+        icon="Tk"
+      />
+    );
   }
 
   return (

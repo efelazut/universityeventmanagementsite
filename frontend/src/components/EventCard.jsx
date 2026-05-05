@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { RatingStars } from "./RatingStars";
-import { formatEventDate, formatEventTimeRange, getEventVisualState } from "../utils/eventPresentation";
+import { formatEventDate, getEventVisualState } from "../utils/eventPresentation";
 
 const fallbackImages = {
   teknoloji: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80",
@@ -29,7 +29,7 @@ function safeText(value, fallback) {
   return normalized || fallback;
 }
 
-export function EventCard({ event, actionLabel = "Etkinliği İncele", actionTo, footer, compact = false }) {
+export function EventCard({ event, actionLabel = "Detay", actionTo, footer, compact = false }) {
   const safeEvent = {
     id: Number(event?.id) || 0,
     title: safeText(event?.title, "Etkinlik adı güncelleniyor"),
@@ -80,18 +80,8 @@ export function EventCard({ event, actionLabel = "Etkinliği İncele", actionTo,
           </div>
           <p className="event-club-name">{safeEvent.clubName}</p>
           <h3 className="event-title">{safeEvent.title}</h3>
-          <p className="event-summary line-clamp-2">{safeEvent.description}</p>
-        </div>
-
-        <div className="event-info-list">
-          <div className="event-info-item">
-            <strong>Tarih:</strong> <span>{formatEventDate(safeEvent.startDate)}</span>
-          </div>
-          <div className="event-info-item">
-            <strong>Saat:</strong> <span>{formatEventTimeRange(safeEvent.startDate, safeEvent.endDate)}</span>
-          </div>
-          <div className="event-info-item">
-            <strong>Konum:</strong> <span>{safeEvent.format === "Online" ? "Online" : safeEvent.locationDetails || `${safeEvent.roomName}`}</span>
+          <div className="event-mini-meta">
+            <span>{formatEventDate(safeEvent.startDate)}</span>
           </div>
         </div>
 

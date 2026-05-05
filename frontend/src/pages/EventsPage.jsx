@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { EventCard } from "../components/EventCard";
 import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
@@ -45,11 +46,7 @@ export function EventsPage() {
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
-    category: "all",
-    club: "all",
-    campus: "all",
-    format: "all",
-    fee: "all"
+    category: "all"
   });
 
   const events = useMemo(() => {
@@ -64,9 +61,7 @@ export function EventsPage() {
     Boolean(user && event?.id && (user.role === "Admin" || (user.role === "ClubManager" && user.clubId === event.clubId)));
 
   const options = useMemo(() => ({
-    clubs: [...new Map(events.filter((item) => item.clubId).map((item) => [item.clubId, item.clubName])).entries()],
-    categories: [...new Set(events.map((item) => item.category).filter(Boolean))],
-    campuses: [...new Set(events.map((item) => item.campus).filter(Boolean))]
+    categories: [...new Set(events.map((item) => item.category).filter(Boolean))]
   }), [events]);
 
   const filteredEvents = useMemo(() => {
@@ -80,15 +75,8 @@ export function EventsPage() {
 
       const matchesStatus = filters.status === "all" || item.computedStatus === filters.status;
       const matchesCategory = filters.category === "all" || item.category === filters.category;
-      const matchesClub = filters.club === "all" || String(item.clubId) === filters.club;
-      const matchesCampus = filters.campus === "all" || item.campus === filters.campus;
-      const matchesFormat = filters.format === "all" || item.format === filters.format;
-      const matchesFee =
-        filters.fee === "all" ||
-        (filters.fee === "free" && item.isFree) ||
-        (filters.fee === "paid" && !item.isFree);
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesClub && matchesCampus && matchesFormat && matchesFee;
+      return matchesSearch && matchesStatus && matchesCategory;
     });
   }, [events, filters]);
 
@@ -111,38 +99,37 @@ export function EventsPage() {
 
   if (eventsQuery.error) {
     return (
-      <SectionCard title="Etkinlikler yüklenemedi" description="Liste şu anda alınamıyor.">
-        <EmptyState title="Etkinlik verisine ulaşılamadı." description={eventsQuery.error || "Daha sonra tekrar deneyin."} icon="Et" />
-      </SectionCard>
+      <ErrorState
+        title="Etkinlikler yüklenemedi"
+        description="Etkinlik listesi şu anda alınamıyor."
+        error={eventsQuery.error}
+        onRetry={eventsQuery.reload}
+        icon="Et"
+      />
     );
   }
 
   return (
     <div className="page-stack">
-      <section className="page-hero">
-        <div>
-          <p className="eyebrow">Etkinlikler</p>
-          <h1>Kampüs Takvimi</h1>
+      {user && ["Admin", "ClubManager"].includes(user.role) ? (
+        <div className="page-actions-row">
+          <Link className="primary-button link-button" to="/events/new">
+            Yeni Etkinlik
+          </Link>
         </div>
-        <div className="hero-actions">
-          {user && ["Admin", "ClubManager"].includes(user.role) ? (
-            <Link className="primary-button link-button" to="/events/new">
-              Yeni Etkinlik
-            </Link>
-          ) : null}
-          <div className="status-panel">
-            <strong>{filteredEvents.length} etkinlik</strong>
-            <span>Filtreye göre görünen liste</span>
-          </div>
-        </div>
-      </section>
+      ) : null}
 
       {myEventsQuery.error && user ? (
         <div className="notice-box">Kişisel etkinlik durumu geçici olarak alınamadı. Genel liste görünmeye devam ediyor.</div>
       ) : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
-      <SectionCard title="Filtreler" description="Listeyi sadeleştirin.">
+      <details className="filter-disclosure compact-filter-card">
+        <summary>
+          <span className="section-title-mark" aria-hidden="true" />
+          <strong>Filtreler</strong>
+          <small>{filteredEvents.length} etkinlik</small>
+        </summary>
         <div className="filter-toolbar event-filter-toolbar">
           <label className="filter-field">
             <span>Ara</span>
@@ -167,45 +154,11 @@ export function EventsPage() {
               ))}
             </select>
           </label>
-          <label className="filter-field">
-            <span>Kulüp</span>
-            <select value={filters.club} onChange={(event) => setFilters({ ...filters, club: event.target.value })}>
-              <option value="all">Tüm kulüpler</option>
-              {options.clubs.map(([clubId, name]) => (
-                <option key={clubId} value={clubId}>{name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="filter-field">
-            <span>Kampüs</span>
-            <select value={filters.campus} onChange={(event) => setFilters({ ...filters, campus: event.target.value })}>
-              <option value="all">Tümü</option>
-              {options.campuses.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label className="filter-field">
-            <span>Biçim</span>
-            <select value={filters.format} onChange={(event) => setFilters({ ...filters, format: event.target.value })}>
-              <option value="all">Tümü</option>
-              <option value="Fiziksel">Fiziksel</option>
-              <option value="Online">Online</option>
-            </select>
-          </label>
-          <label className="filter-field">
-            <span>Ücret</span>
-            <select value={filters.fee} onChange={(event) => setFilters({ ...filters, fee: event.target.value })}>
-              <option value="all">Tümü</option>
-              <option value="free">Ücretsiz</option>
-              <option value="paid">Ücretli</option>
-            </select>
-          </label>
         </div>
-      </SectionCard>
+      </details>
 
       {filteredEvents.length ? (
-        <SectionCard title="Etkinlik Listesi" description="Duruma göre sıralanmış görünüm.">
+        <SectionCard title={`${filteredEvents.length} Etkinlik`}>
           <div className="event-grid featured-grid">
             {filteredEvents.map((item) => (
               <EventCard
@@ -221,11 +174,7 @@ export function EventsPage() {
                         Sil
                       </button>
                     </div>
-                  ) : (
-                    <span className="mini-metric">
-                      {item.requiresApproval ? `${item.pendingRegistrationCount} bekleyen başvuru` : `${item.registrationCount} kayıt`}
-                    </span>
-                  )
+                  ) : null
                 }
               />
             ))}

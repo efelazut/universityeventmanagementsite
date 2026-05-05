@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getFriendlyApiError } from "../services/api";
 
 export function useAsyncData(loader, deps = []) {
   const [data, setData] = useState(null);
@@ -11,7 +12,7 @@ export function useAsyncData(loader, deps = []) {
     try {
       setData(await loader());
     } catch (err) {
-      setError(err.message || "Bir hata oluştu.");
+      setError(getFriendlyApiError(err));
     } finally {
       setLoading(false);
     }

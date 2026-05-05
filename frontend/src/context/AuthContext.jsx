@@ -1,18 +1,28 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { loginRequest } from "../services/authService";
+import { DEFAULT_API_BASE_URL } from "../services/api";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "maltepe-auth";
 const API_STORAGE_KEY = "maltepe-api-base-url";
+const LEGACY_API_BASE_URLS = new Set(["http://localhost:5000", "https://localhost:7269", "http://localhost:59455"]);
+
+function getInitialApiBaseUrl() {
+  const storedUrl = localStorage.getItem(API_STORAGE_KEY);
+
+  if (!storedUrl || LEGACY_API_BASE_URLS.has(storedUrl)) {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  return storedUrl;
+}
 
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   });
-  const [apiBaseUrl, setApiBaseUrlState] = useState(
-    () => localStorage.getItem(API_STORAGE_KEY) || import.meta.env.VITE_API_BASE_URL || "http://localhost:5052"
-  );
+  const [apiBaseUrl, setApiBaseUrlState] = useState(getInitialApiBaseUrl);
 
   useEffect(() => {
     if (auth) {

@@ -11,8 +11,8 @@ This backend now uses SQL Server through Entity Framework Core as its primary pe
 
 Update `DefaultConnection` in:
 
-- `C:\Users\Efe\Documents\New project\UniversityEventManagement.Api\appsettings.json`
-- optionally `C:\Users\Efe\Documents\New project\UniversityEventManagement.Api\appsettings.Development.json`
+- `UniversityEventManagement.Api\appsettings.json`
+- optionally `UniversityEventManagement.Api\appsettings.Development.json`
 
 Example:
 
@@ -26,7 +26,7 @@ If you use SQL authentication instead of Windows authentication, replace the con
 
 ## EF Core Commands
 
-Run these from `C:\Users\Efe\Documents\New project`:
+Run these from the repository root:
 
 ```powershell
 dotnet ef migrations add <MigrationName> --project .\UniversityEventManagement.Api\UniversityEventManagement.Api.csproj --startup-project .\UniversityEventManagement.Api\UniversityEventManagement.Api.csproj --output-dir Migrations

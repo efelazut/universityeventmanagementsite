@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
+import { ErrorState } from "../components/ErrorState";
 import { SectionCard } from "../components/SectionCard";
-import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { fetchRoomAvailability, fetchRoomDayAvailability, fetchRooms } from "../services/resourceService";
@@ -60,9 +60,6 @@ export function RoomsPage() {
   const selectedRoomAvailability = dayAvailabilityQuery.data && typeof dayAvailabilityQuery.data === "object"
     ? dayAvailabilityQuery.data
     : null;
-  const availableToday = availability.filter((item) => String(item.statusLabel || "").toLocaleLowerCase("tr-TR").includes("tamamen boş")).length;
-  const partiallyBusy = availability.filter((item) => String(item.statusLabel || "").toLocaleLowerCase("tr-TR").includes("kısmi")).length;
-
   useEffect(() => {
     if (!rooms.length) {
       setSelectedRoomId(null);
@@ -93,46 +90,27 @@ export function RoomsPage() {
 
   if (roomsQuery.error || availabilityQuery.error) {
     return (
-      <SectionCard title="Salon görünümü şu anda açılmıyor" description="Sistemi boş ekranda bırakmadan temel durumu koruyoruz.">
-        <EmptyState
-          title="Salon verisi alınamadı."
-          description={roomsQuery.error || availabilityQuery.error || "Biraz sonra tekrar deneyebilirsiniz."}
-        />
-      </SectionCard>
+      <ErrorState
+        title="Salonlar yüklenemedi"
+        description="Salon listesi ve uygunluk bilgileri şu anda alınamıyor."
+        error={roomsQuery.error || availabilityQuery.error}
+        onRetry={() => Promise.all([roomsQuery.reload(), availabilityQuery.reload()])}
+        icon="Sl"
+      />
     );
   }
 
   return (
     <div className="page-stack">
-      <section className="page-hero room-hero">
-        <div>
-          <p className="eyebrow">Salon Planlama</p>
-          <h1>Alan uygunluğunu saat çizelgesi üzerinden güvenle yönetin.</h1>
-          <p>
-            Salon kartları kısa özet verir; seçtiğiniz anda gün bazlı ve saat bloklu uygunluk paneli açılır.
-          </p>
+      {user?.role === "Admin" ? (
+        <div className="page-actions-row">
+          <Link className="primary-button link-button" to="/rooms/new">
+            Yeni Salon
+          </Link>
         </div>
-        <div className="hero-actions">
-          {user?.role === "Admin" ? (
-            <Link className="primary-button link-button" to="/rooms/new">
-              Yeni salon ekle
-            </Link>
-          ) : null}
-          <div className="status-panel status-panel-wide">
-            <strong>{rooms.length} salon aktif</strong>
-            <span>Bugünkü özet, seçili tarih ve saat blokları aynı akış içinde görünür.</span>
-          </div>
-        </div>
-      </section>
+      ) : null}
 
-      <div className="stat-grid">
-        <StatCard title="Bugün tamamen boş" value={availableToday} accent="teal" subtitle="Yeni planlamaya açık alanlar" />
-        <StatCard title="Kısmi yoğun" value={partiallyBusy} accent="blue" subtitle="Saat bazlı doluluk görülen salonlar" />
-        <StatCard title="Toplam salon" value={rooms.length} accent="orange" subtitle="Envanterdeki tüm alanlar" />
-        <StatCard title="Seçili görünüm" value={selectedRoom ? selectedRoom.name : "Salon seçin"} accent="rose" subtitle="Availability paneli" />
-      </div>
-
-      <SectionCard title="Salon özeti" description="Kartlar stabildir; veri eksik olsa bile sayfa çökmez.">
+      <SectionCard title="Salonlar">
         {rooms.length ? (
           <div className="room-card-grid">
             {rooms.map((room) => {
@@ -188,7 +166,7 @@ export function RoomsPage() {
         )}
       </SectionCard>
 
-      <SectionCard title="Availability paneli" description="Bir salon seçin, tarih belirleyin ve saat bazlı uygunluğu inceleyin.">
+      <SectionCard title="Uygunluk Paneli">
         {selectedRoom ? (
           <div className="room-availability-panel">
             <div className="room-availability-top">

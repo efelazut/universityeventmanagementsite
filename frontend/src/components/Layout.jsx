@@ -7,6 +7,9 @@ import { fetchClubs } from "../services/resourceService";
 import { MessageDrawer } from "./MessageDrawer";
 import { NotificationPanel } from "./NotificationPanel";
 
+const campusBrandImage =
+  "https://commons.wikimedia.org/wiki/Special:FilePath/Open_area_outside_of_Maltepe_University%2C_Istanbul_01.JPG";
+
 function getRoleLabel(role) {
   if (role === "Admin") return "Yönetici";
   if (role === "ClubManager") return "Kulüp Yöneticisi";
@@ -78,7 +81,9 @@ export function Layout({ children }) {
         <div className="navbar-container">
           <div className="navbar-left">
             <Link to="/home" className="brand brand-header">
-              <span className="brand-mark">MÜ</span>
+              <span className="brand-mark brand-photo" aria-hidden="true">
+                <img src={campusBrandImage} alt="" />
+              </span>
               <div>
                 <strong>Maltepe Etkinlik</strong>
               </div>
@@ -97,11 +102,17 @@ export function Layout({ children }) {
             {user ? (
               <>
                 <button className="icon-action" type="button" onClick={() => openNotifications()} title="Bildirimler">
-                  <span className="icon-action-mark">B</span>
+                  <svg className="icon-action-symbol" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 10.5V9a6 6 0 0 0-12 0v1.5c0 2.2-.7 3.5-1.5 4.5-.5.6-.1 1.5.7 1.5h13.6c.8 0 1.2-.9.7-1.5-.8-1-1.5-2.3-1.5-4.5Z" />
+                    <path d="M9.5 19a2.7 2.7 0 0 0 5 0" />
+                  </svg>
                   {unreadNotificationCount ? <span className="nav-badge">{unreadNotificationCount}</span> : null}
                 </button>
                 <button className="icon-action" type="button" onClick={() => openMessages()} title="Mesajlar">
-                  <span className="icon-action-mark">M</span>
+                  <svg className="icon-action-symbol" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4.8 6.5h14.4c.7 0 1.3.6 1.3 1.3v8.4c0 .7-.6 1.3-1.3 1.3H4.8c-.7 0-1.3-.6-1.3-1.3V7.8c0-.7.6-1.3 1.3-1.3Z" />
+                    <path d="m5 8 7 5 7-5" />
+                  </svg>
                   {unreadMessageCount ? <span className="nav-badge">{unreadMessageCount}</span> : null}
                 </button>
 
