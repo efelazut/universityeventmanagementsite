@@ -9,4 +9,9 @@ public class ClubStatisticsResponse
     public int TotalRegistrations { get; set; }
     public int TotalAttendance { get; set; }
     public decimal TotalBudget { get; set; }
+    public int? DeclaredMemberCount { get; set; }
+    public int? ActualMemberCount { get; set; }
+    public string AcademicYear { get; set; } = string.Empty;
+    public IReadOnlyDictionary<string, int> FacultyDistribution { get; set; } = new Dictionary<string, int>();
+    public IReadOnlyDictionary<string, int> DepartmentDistribution { get; set; } = new Dictionary<string, int>();
 }

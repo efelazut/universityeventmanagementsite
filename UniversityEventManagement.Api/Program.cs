@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using UniversityEventManagement.Api.Data;
@@ -77,7 +78,8 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString, sqlServerOptions =>
-        sqlServerOptions.EnableRetryOnFailure()));
+        sqlServerOptions.EnableRetryOnFailure())
+        .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClubService, ClubService>();
 builder.Services.AddScoped<IEventService, EventService>();

@@ -1,124 +1,422 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using UniversityEventManagement.Api.Models;
+using UniversityEventManagement.Api.Security;
+using UniversityEventManagement.Api.Services;
 
 namespace UniversityEventManagement.Api.Data;
 
 public static partial class AppDbSeeder
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = false
+    };
+
     public static async Task SeedAsync(AppDbContext dbContext)
     {
-        if (await dbContext.Users.AnyAsync())
+        if (await dbContext.ImportRuns.AnyAsync())
         {
-            await RestoreMissingDemoDataAsync(dbContext);
+            await EnsureSystemUsersAsync(dbContext);
             return;
         }
 
-        var now = DateTime.UtcNow;
-        var clubs = CreateClubs();
-        dbContext.Clubs.AddRange(clubs);
+        var seedRoot = Path.Combine(AppContext.BaseDirectory, "Data", "Seed");
+        if (!Directory.Exists(seedRoot))
+        {
+            seedRoot = Path.Combine(Directory.GetCurrentDirectory(), "Data", "Seed");
+        }
+
+        if (!Directory.Exists(seedRoot))
+        {
+            await EnsureSystemUsersAsync(dbContext);
+            return;
+        }
+
+        await ReplaceDemoDataAsync(dbContext);
+        await EnsureSystemUsersAsync(dbContext);
+
+        var rooms = ReadSeed<List<RoomSeed>>(seedRoot, "seed-rooms.json");
+        var clubs = ReadSeed<List<ClubSeed>>(seedRoot, "seed-clubs.json");
+        var events = ReadSeed<List<EventSeed>>(seedRoot, "seed-events.json");
+        var statistics = ReadSeed<List<ClubStatisticSeed>>(seedRoot, "seed-club-statistics.json");
+        var warnings = ReadSeed<List<ImportWarningSeed>>(seedRoot, "import-warnings.json");
+
+        var roomEntities = rooms
+            .Where(room => !string.IsNullOrWhiteSpace(room.Name))
+            .GroupBy(room => NormalizeKey(CleanRoomName(room.Name)))
+            .Select(group => group.First())
+            .Select(room => new Room
+            {
+                Name = CleanRoomName(room.Name),
+                Building = string.IsNullOrWhiteSpace(room.Building) ? "Maltepe Üniversitesi" : room.Building.Trim(),
+                Type = "Etkinlik Salonu",
+                Description = room.Notes?.Trim() ?? string.Empty,
+                Notes = room.Notes?.Trim() ?? string.Empty,
+                Capacity = room.Capacity ?? 0,
+                IsAvailable = true,
+                SourceKey = NormalizeKey(CleanRoomName(room.Name))
+            })
+            .ToList();
+
+        dbContext.Rooms.AddRange(roomEntities);
         await dbContext.SaveChangesAsync();
 
-        var rooms = CreateRooms();
-        dbContext.Rooms.AddRange(rooms);
+        var clubEntities = clubs
+            .Where(club => !string.IsNullOrWhiteSpace(club.Name))
+            .GroupBy(club => NormalizeKey(CleanClubName(club.Name)))
+            .Select(group => group.First())
+            .Select(club => new Club
+            {
+                Name = CleanClubName(club.Name),
+                Description = club.Description?.Trim() ?? string.Empty,
+                Category = string.IsNullOrWhiteSpace(club.Category) ? "Kulüp" : club.Category.Trim(),
+                AvatarUrl = club.LogoUrl?.Trim() ?? string.Empty,
+                BannerUrl = string.Empty,
+                ShowcaseSummary = club.Description?.Trim() ?? string.Empty,
+                HighlightTitle = string.Empty,
+                PresidentName = "SKS",
+                PresidentEmail = "sks@maltepe.edu.tr",
+                InstagramUrl = club.InstagramUrl?.Trim() ?? string.Empty,
+                MemberCapacity = club.DeclaredMemberCount,
+                DeclaredMemberCount = club.DeclaredMemberCount,
+                ActualMemberCount = club.ActualMemberCount,
+                AcademicYear = club.AcademicYear?.Trim() ?? string.Empty,
+                LogoUrl = club.LogoUrl?.Trim() ?? string.Empty,
+                IsActive = club.IsActive,
+                SourceKey = NormalizeKey(CleanClubName(club.Name))
+            })
+            .ToList();
+
+        dbContext.Clubs.AddRange(clubEntities);
+        await dbContext.SaveChangesAsync();
+        await EnsurePresentationUsersAsync(dbContext, clubEntities);
+
+        var clubByKey = clubEntities.ToDictionary(club => club.SourceKey, club => club);
+        var eventEntities = new List<Event>();
+        foreach (var item in events.Where(item => !string.IsNullOrWhiteSpace(item.Title)))
+        {
+            var startDate = ResolveEventDate(item);
+            var club = !string.IsNullOrWhiteSpace(item.ClubName) && clubByKey.TryGetValue(NormalizeKey(item.ClubName), out var matchedClub)
+                ? matchedClub
+                : null;
+
+            eventEntities.Add(new Event
+            {
+                Title = item.Title.Trim(),
+                Description = item.Description?.Trim() ?? string.Empty,
+                Category = item.SourceYear?.ToString() ?? "SKS",
+                Campus = "Maltepe Üniversitesi",
+                Format = "Fiziksel",
+                ImageUrl = string.Empty,
+                LocationDetails = item.LocationText?.Trim() ?? string.Empty,
+                LocationText = item.LocationText?.Trim() ?? string.Empty,
+                OrganizerText = item.OrganizerText?.Trim() ?? string.Empty,
+                StartDate = startDate,
+                EndDate = startDate.AddHours(2),
+                Capacity = item.Capacity ?? item.ParticipantCount ?? 0,
+                RequiresApproval = false,
+                IsFree = true,
+                Price = 0,
+                ClubId = club?.Id,
+                RoomId = null,
+                PosterCost = 0,
+                CateringCost = 0,
+                SpeakerFee = 0,
+                Status = EventService.NormalizeStatus(item.IsPastEvent ? "Completed" : "Upcoming", startDate, startDate.AddHours(2)),
+                ActualAttendanceCount = item.ParticipantCount ?? 0,
+                ParticipantCount = item.ParticipantCount,
+                SourceYear = item.SourceYear,
+                IsPastEvent = item.IsPastEvent,
+                SourceName = item.Source?.Trim() ?? string.Empty,
+                SourceKey = Truncate(NormalizeKey($"{item.SourceYear}|{item.Title}|{item.Date}|{item.OrganizerText}"), 240)
+            });
+        }
+
+        dbContext.Events.AddRange(eventEntities.GroupBy(item => item.SourceKey).Select(group => group.First()));
         await dbContext.SaveChangesAsync();
 
-        var users = CreateUsers(clubs);
-        dbContext.Users.AddRange(users);
+        foreach (var statistic in statistics)
+        {
+            if (string.IsNullOrWhiteSpace(statistic.ClubName) || string.IsNullOrWhiteSpace(statistic.AcademicYear))
+            {
+                continue;
+            }
+
+            if (!clubByKey.TryGetValue(NormalizeKey(statistic.ClubName), out var club))
+            {
+                continue;
+            }
+
+            dbContext.ClubStatistics.Add(new ClubStatistic
+            {
+                ClubId = club.Id,
+                AcademicYear = statistic.AcademicYear.Trim(),
+                TotalMembers = statistic.TotalMembers,
+                FacultyDistributionJson = JsonSerializer.Serialize(statistic.FacultyDistribution ?? new Dictionary<string, int>(), JsonOptions),
+                DepartmentDistributionJson = JsonSerializer.Serialize(statistic.DepartmentDistribution ?? new Dictionary<string, int>(), JsonOptions)
+            });
+        }
+
         await dbContext.SaveChangesAsync();
 
-        var memberships = CreateMemberships(clubs, users, now);
-        dbContext.ClubMemberships.AddRange(memberships);
-        await dbContext.SaveChangesAsync();
+        dbContext.ImportRuns.Add(new ImportRun
+        {
+            ImportedAt = DateTime.UtcNow,
+            Source = "Maltepe SKS gerçek veri seed",
+            ClubCount = await dbContext.Clubs.CountAsync(),
+            EventCount = await dbContext.Events.CountAsync(),
+            RoomCount = await dbContext.Rooms.CountAsync(),
+            ClubStatisticCount = await dbContext.ClubStatistics.CountAsync(),
+            WarningCount = warnings.Count,
+            WarningSummaryJson = JsonSerializer.Serialize(warnings.Take(50).Select(warning => $"{warning.Source} satır {warning.Row}: {warning.Message}").ToList(), JsonOptions)
+        });
 
-        PromoteAssistantsToManagers(clubs, users);
-        await dbContext.SaveChangesAsync();
-
-        var events = CreateEvents(now, clubs, rooms);
-        dbContext.Events.AddRange(events);
-        await dbContext.SaveChangesAsync();
-
-        var registrations = CreateRegistrations(now, users, events);
-        dbContext.Registrations.AddRange(registrations);
-        await dbContext.SaveChangesAsync();
-
-        var reviews = CreateReviews(now, users, events);
-        dbContext.EventReviews.AddRange(reviews);
-        await dbContext.SaveChangesAsync();
-
-        var notifications = CreateNotifications(now, users, events);
-        dbContext.Notifications.AddRange(notifications);
-        await dbContext.SaveChangesAsync();
-
-        var threads = CreateThreads(now, clubs, users);
-        dbContext.MessageThreads.AddRange(threads);
-        await dbContext.SaveChangesAsync();
-
-        var messages = CreateMessages(now, threads, users);
-        dbContext.Messages.AddRange(messages);
-        await dbContext.SaveChangesAsync();
-
-        var readStates = CreateReadStates(now, threads, users);
-        dbContext.MessageThreadReadStates.AddRange(readStates);
         await dbContext.SaveChangesAsync();
     }
 
-    private static async Task RestoreMissingDemoDataAsync(AppDbContext dbContext)
+    public static async Task ReseedAsync(AppDbContext dbContext)
     {
-        var clubs = await dbContext.Clubs.OrderBy(club => club.Id).ToArrayAsync();
-        var rooms = await dbContext.Rooms.OrderBy(room => room.Id).ToArrayAsync();
-        var users = await dbContext.Users.OrderBy(user => user.Id).ToArrayAsync();
+        dbContext.ImportRuns.RemoveRange(dbContext.ImportRuns);
+        await dbContext.SaveChangesAsync();
+        await SeedAsync(dbContext);
+    }
 
-        if (clubs.Length < 4 || rooms.Length < 8 || users.Length < 12)
+    private static async Task EnsureSystemUsersAsync(AppDbContext dbContext)
+    {
+        if (!await dbContext.Users.AnyAsync(user => user.Email == "admin@maltepe.edu.tr"))
         {
-            return;
+            dbContext.Users.Add(new User
+            {
+                FullName = "Sistem Yöneticisi",
+                Email = "admin@maltepe.edu.tr",
+                PasswordHash = "Admin123!",
+                Role = UserRoles.Admin,
+                Department = "SKS",
+                Faculty = "Maltepe Üniversitesi",
+                StudentNumber = "ADMIN",
+                YearClass = "Personel",
+                Bio = "Sistem yönetimi",
+                IsActiveMember = true
+            });
         }
 
-        var now = DateTime.UtcNow;
-        var events = await dbContext.Events.OrderBy(@event => @event.Id).ToListAsync();
-
-        if (events.Count == 0)
+        if (!await dbContext.Users.AnyAsync(user => user.Email == "test@student.maltepe.edu.tr"))
         {
-            events = CreateEvents(now, clubs, rooms);
-            dbContext.Events.AddRange(events);
-            await dbContext.SaveChangesAsync();
+            dbContext.Users.Add(new User
+            {
+                FullName = "Test Öğrencisi",
+                Email = "test@student.maltepe.edu.tr",
+                PasswordHash = "Password1!",
+                Role = UserRoles.Student,
+                Department = "Test",
+                Faculty = "Maltepe Üniversitesi",
+                StudentNumber = "TEST001",
+                YearClass = "Test",
+                Bio = "Test hesabı",
+                IsActiveMember = false
+            });
         }
 
-        if (!await dbContext.Registrations.AnyAsync())
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task EnsurePresentationUsersAsync(AppDbContext dbContext, IReadOnlyList<Club> clubs)
+    {
+        var ankaClub = clubs.FirstOrDefault(club => club.Name.Contains("Anka", StringComparison.OrdinalIgnoreCase));
+        var sinemaClub = clubs.FirstOrDefault(club => club.Name.Contains("Sinema", StringComparison.OrdinalIgnoreCase));
+        var hukukClub = clubs.FirstOrDefault(club => club.Name.Contains("Hukuk", StringComparison.OrdinalIgnoreCase));
+
+        var users = new[]
         {
-            dbContext.Registrations.AddRange(CreateRegistrations(now, users, events));
-            await dbContext.SaveChangesAsync();
+            new User { FullName = "Anka Kulüp Yöneticisi", Email = "anka.yonetici@uniconnect.edu.tr", PasswordHash = "Password1!", Role = UserRoles.ClubManager, Department = "Yazılım Mühendisliği", Faculty = "Mühendislik ve Doğa Bilimleri Fakültesi", StudentNumber = "KULUP001", YearClass = "3. Sınıf", Bio = "Anka Yazılım Kulübü yönetici hesabı.", IsActiveMember = true, ClubId = ankaClub?.Id },
+            new User { FullName = "Sinema Kulüp Yöneticisi", Email = "sinema.yonetici@uniconnect.edu.tr", PasswordHash = "Password1!", Role = UserRoles.ClubManager, Department = "Radyo, Televizyon ve Sinema", Faculty = "İletişim Fakültesi", StudentNumber = "KULUP002", YearClass = "4. Sınıf", Bio = "Sinema Kulübü yönetici hesabı.", IsActiveMember = true, ClubId = sinemaClub?.Id },
+            new User { FullName = "Hukuk Kulüp Yöneticisi", Email = "hukuk.yonetici@uniconnect.edu.tr", PasswordHash = "Password1!", Role = UserRoles.ClubManager, Department = "Hukuk", Faculty = "Hukuk Fakültesi", StudentNumber = "KULUP003", YearClass = "3. Sınıf", Bio = "Hukuk Kulübü yönetici hesabı.", IsActiveMember = true, ClubId = hukukClub?.Id },
+            new User { FullName = "Emre Tunç", Email = "emre.tunc@student.maltepe.edu.tr", PasswordHash = "Password1!", Role = UserRoles.Student, Department = "Yazılım Mühendisliği", Faculty = "Mühendislik ve Doğa Bilimleri Fakültesi", StudentNumber = "STU001", YearClass = "2. Sınıf", Bio = "Sunum için öğrenci test hesabı.", IsActiveMember = true },
+            new User { FullName = "Elif Nur Acar", Email = "elif.acar@student.maltepe.edu.tr", PasswordHash = "Password1!", Role = UserRoles.Student, Department = "Psikoloji", Faculty = "İnsan ve Toplum Bilimleri Fakültesi", StudentNumber = "STU002", YearClass = "3. Sınıf", Bio = "Sunum için öğrenci test hesabı.", IsActiveMember = true },
+            new User { FullName = "Deniz Kaya", Email = "deniz.kaya@student.maltepe.edu.tr", PasswordHash = "Password1!", Role = UserRoles.Student, Department = "İşletme", Faculty = "İşletme ve Yönetim Bilimleri Fakültesi", StudentNumber = "STU003", YearClass = "1. Sınıf", Bio = "Sunum için öğrenci test hesabı.", IsActiveMember = false }
+        };
+
+        foreach (var user in users)
+        {
+            var existing = await dbContext.Users.FirstOrDefaultAsync(item => item.Email == user.Email);
+            if (existing is null)
+            {
+                dbContext.Users.Add(user);
+            }
+            else
+            {
+                existing.FullName = user.FullName;
+                existing.PasswordHash = user.PasswordHash;
+                existing.Role = user.Role;
+                existing.Department = user.Department;
+                existing.Faculty = user.Faculty;
+                existing.StudentNumber = user.StudentNumber;
+                existing.YearClass = user.YearClass;
+                existing.Bio = user.Bio;
+                existing.IsActiveMember = user.IsActiveMember;
+                existing.ClubId = user.ClubId;
+            }
         }
 
-        if (!await dbContext.EventReviews.AnyAsync())
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task ReplaceDemoDataAsync(AppDbContext dbContext)
+    {
+        dbContext.EventReviews.RemoveRange(dbContext.EventReviews);
+        dbContext.Registrations.RemoveRange(dbContext.Registrations);
+        dbContext.Notifications.RemoveRange(dbContext.Notifications);
+        dbContext.MessageThreadReadStates.RemoveRange(dbContext.MessageThreadReadStates);
+        dbContext.Messages.RemoveRange(dbContext.Messages);
+        dbContext.MessageThreads.RemoveRange(dbContext.MessageThreads);
+        dbContext.ClubMemberships.RemoveRange(dbContext.ClubMemberships);
+        dbContext.Events.RemoveRange(dbContext.Events);
+        dbContext.ClubStatistics.RemoveRange(dbContext.ClubStatistics);
+        dbContext.Rooms.RemoveRange(dbContext.Rooms);
+        dbContext.Clubs.RemoveRange(dbContext.Clubs);
+
+        var nonAdminUsers = await dbContext.Users
+            .Where(user => user.Role != UserRoles.Admin)
+            .ToListAsync();
+        dbContext.Users.RemoveRange(nonAdminUsers);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static T ReadSeed<T>(string root, string fileName) where T : new()
+    {
+        var path = Path.Combine(root, fileName);
+        return File.Exists(path)
+            ? JsonSerializer.Deserialize<T>(File.ReadAllText(path), JsonOptions) ?? new T()
+            : new T();
+    }
+
+    private static DateTime ResolveEventDate(EventSeed seed)
+    {
+        if (DateTime.TryParse(seed.Date, out var parsed))
         {
-            dbContext.EventReviews.AddRange(CreateReviews(now, users, events));
-            await dbContext.SaveChangesAsync();
+            return parsed.Date.AddHours(12);
         }
 
-        if (!await dbContext.Notifications.AnyAsync())
+        return new DateTime(seed.SourceYear ?? DateTime.UtcNow.Year, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+    }
+
+    private static string CleanClubName(string? value)
+    {
+        var text = (value ?? string.Empty).Trim();
+        text = Regex.Replace(text, "\\s+", " ");
+        text = Regex.Replace(text, "^(Maltepe Universitesi|Maltepe Üniversitesi|MAU|Mau)\\s+", string.Empty, RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, "\\bKulubu\\s+Kulubu\\b", "Kulubu", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, "\\bKulübü\\s+Kulübü\\b", "Kulübü", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, "\\bToplulugu\\b", "Topluluğu", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, "\\bVe\\b", "ve");
+        text = text.Replace("Arama ve Kurtama", "Arama ve Kurtarma", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("GDSC Kulübü (Gdg on campus)", "Google Developer Groups On Campus Kulübü", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("GDSC Kulübü", "Google Developer Student Clubs Kulübü", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("Mau Oyun", "Oyun", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("Mau Veganizm", "Veganizm", StringComparison.OrdinalIgnoreCase);
+        return text.Trim();
+    }
+
+    private static string CleanRoomName(string? value)
+    {
+        var text = (value ?? string.Empty).Trim();
+        text = Regex.Replace(text, "\\s+", " ");
+        text = Regex.Replace(text, "\\bfak\\.?\\b", "Fakültesi", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, "\\bFak\\.\\b", "Fakültesi", RegexOptions.IgnoreCase);
+        text = text.Replace("Fakültesi.", "Fakültesi", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("Konferans Salonu(", "Konferans Salonu (", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("İnsan ve toplum bilimleri", "İnsan ve Toplum Bilimleri", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("Eğitim Fakültesi amfi", "Eğitim Fakültesi Amfi", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("İnsan ve Toplum Bilimleri Fakültesi Amfi", "İnsan ve Toplum Bilimleri Fakültesi Amfi", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("Süha Arın Konferans Salonu(İletişim Fakültesi)", "Süha Arın Konferans Salonu (İletişim Fakültesi)", StringComparison.OrdinalIgnoreCase);
+        return text.Trim();
+    }
+
+    private static string NormalizeKey(string? value)
+    {
+        var text = (value ?? string.Empty).Trim().ToLowerInvariant()
+            .Replace('ı', 'i')
+            .Replace('ğ', 'g')
+            .Replace('ü', 'u')
+            .Replace('ş', 's')
+            .Replace('ö', 'o')
+            .Replace('ç', 'c');
+
+        foreach (var removable in new[]
         {
-            dbContext.Notifications.AddRange(CreateNotifications(now, users, events));
-            await dbContext.SaveChangesAsync();
+            "maltepe universitesi",
+            "saglik kultur ve spor daire baskanligi",
+            "saglik, kultur ve spor daire baskanligi",
+            "sks",
+            "mau",
+            "kulubu",
+            "toplulugu",
+            "universitesi"
+        })
+        {
+            text = text.Replace(removable, " ");
         }
 
-        var threads = await dbContext.MessageThreads.OrderBy(thread => thread.Id).ToListAsync();
+        return Regex.Replace(Regex.Replace(text, "[^a-z0-9]+", " "), "\\s+", " ").Trim();
+    }
 
-        if (threads.Count == 0)
-        {
-            threads = CreateThreads(now, clubs, users);
-            dbContext.MessageThreads.AddRange(threads);
-            await dbContext.SaveChangesAsync();
-        }
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 
-        if (!await dbContext.Messages.AnyAsync())
-        {
-            dbContext.Messages.AddRange(CreateMessages(now, threads, users));
-            await dbContext.SaveChangesAsync();
-        }
+    private sealed class RoomSeed
+    {
+        public string Name { get; set; } = string.Empty;
+        public int? Capacity { get; set; }
+        public string? Building { get; set; }
+        public string? Notes { get; set; }
+    }
 
-        if (!await dbContext.MessageThreadReadStates.AnyAsync())
-        {
-            dbContext.MessageThreadReadStates.AddRange(CreateReadStates(now, threads, users));
-            await dbContext.SaveChangesAsync();
-        }
+    private sealed class ClubSeed
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? InstagramUrl { get; set; }
+        public int? DeclaredMemberCount { get; set; }
+        public int? ActualMemberCount { get; set; }
+        public string? AcademicYear { get; set; }
+        public string? Category { get; set; }
+        public string? LogoUrl { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    private sealed class EventSeed
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Date { get; set; }
+        public string? OrganizerText { get; set; }
+        public string? ClubName { get; set; }
+        public string? RoomName { get; set; }
+        public string? LocationText { get; set; }
+        public int? ParticipantCount { get; set; }
+        public int? Capacity { get; set; }
+        public int? SourceYear { get; set; }
+        public bool IsPastEvent { get; set; }
+        public string? Description { get; set; }
+        public string? Source { get; set; }
+    }
+
+    private sealed class ClubStatisticSeed
+    {
+        public string ClubName { get; set; } = string.Empty;
+        public string AcademicYear { get; set; } = string.Empty;
+        public int TotalMembers { get; set; }
+        public Dictionary<string, int>? FacultyDistribution { get; set; }
+        public Dictionary<string, int>? DepartmentDistribution { get; set; }
+    }
+
+    private sealed class ImportWarningSeed
+    {
+        public string Source { get; set; } = string.Empty;
+        public int Row { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

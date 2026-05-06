@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniversityEventManagement.Api", "UniversityEventManagement.Api\UniversityEventManagement.Api.csproj", "{98E01213-8B00-3156-2D09-69129F75E29F}"
 EndProject
-Global
+Global a
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU

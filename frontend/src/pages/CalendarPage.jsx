@@ -2,11 +2,10 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
-import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { fetchEvents } from "../services/resourceService";
-import { getEventVisualState, formatEventTimeRange } from "../utils/eventPresentation";
+import { formatEventTimeRange, getEventVisualState } from "../utils/eventPresentation";
 
 function sameDay(left, right) {
   return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
@@ -72,8 +71,27 @@ export function CalendarPage() {
     () => allEvents.filter((event) => sameDay(event.parsedStartDate, selectedDay)),
     [allEvents, selectedDay]
   );
+  const currentMonthEventCount = useMemo(
+    () =>
+      allEvents.filter(
+        (event) =>
+          event.parsedStartDate.getFullYear() === currentMonth.getFullYear() &&
+          event.parsedStartDate.getMonth() === currentMonth.getMonth()
+      ).length,
+    [allEvents, currentMonth]
+  );
 
-    if (eventsQuery.loading) {
+  const goToMonth = (offset) => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentMonth(today);
+    setSelectedDay(today);
+  };
+
+  if (eventsQuery.loading) {
     return <div className="loading-state loading-state-large">Takvim hazırlanıyor...</div>;
   }
 
@@ -91,98 +109,99 @@ export function CalendarPage() {
 
   return (
     <div className="page-stack">
-      <section className="page-hero page-hero-calendar">
+      <section className="calendar-modern-hero">
         <div>
           <p className="eyebrow">Takvim</p>
-          <h1>Kampüsteki etkinlikleri gün gün takip edin.</h1>
-          <p>Etkinlik olan günler işaretlenir, bir gün seçildiğinde o günün tüm etkinlikleri listelenir.</p>
+          <h1>Etkinlik Takvimi</h1>
         </div>
-        <div className="status-panel status-panel-wide">
-          <span>Bu ay toplam etkinlik</span>
-          <strong>{allEvents.filter((event) => event.parsedStartDate.getMonth() === currentMonth.getMonth()).length}</strong>
+        <div className="calendar-month-count">
+          <span>Bu ay</span>
+          <strong>{currentMonthEventCount}</strong>
+          <small>etkinlik</small>
         </div>
       </section>
 
-      <div className="calendar-layout calendar-layout-wide">
-        <SectionCard
-          title={currentMonth.toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}
-          description="Takvim üzerinden planlarınızı yönetin."
-          action={
-            <div className="inline-actions">
-              <button className="ghost-button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
-                Önceki Ay
-              </button>
-              <button className="ghost-button" onClick={() => {
-                const today = new Date();
-                setCurrentMonth(today);
-                setSelectedDay(today);
-              }}>
-                Bugün
-              </button>
-              <button className="ghost-button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
-                Sonraki Ay
-              </button>
+      <div className="calendar-modern-layout">
+        <section className="modern-calendar-card">
+          <div className="modern-calendar-head">
+            <button className="calendar-arrow" type="button" onClick={() => goToMonth(-1)} aria-label="Önceki ay">
+              ‹
+            </button>
+            <div>
+              <h2>{currentMonth.toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</h2>
+              <span>{currentMonthEventCount} etkinlik planlandı</span>
             </div>
-          }
-        >
-          <div className="month-grid">
-            {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((label) => (
-              <div key={label} className="month-grid-label">
-                {label}
-              </div>
+            <button className="calendar-arrow" type="button" onClick={() => goToMonth(1)} aria-label="Sonraki ay">
+              ›
+            </button>
+          </div>
+
+          <div className="modern-week-row">
+            {["Pzt", "Sa", "Çr", "Pr", "Cu", "Ct", "Pz"].map((label) => (
+              <span key={label}>{label}</span>
             ))}
+          </div>
+
+          <div className="modern-month-grid">
             {monthDays.map((day) => {
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
               const dayEvents = eventMap[day.toDateString()] || [];
-              const topEvent = dayEvents[0];
-              const topState = topEvent ? getEventVisualState(topEvent) : null;
+              const hasEvents = dayEvents.length > 0;
+              const isSelected = sameDay(day, selectedDay);
+              const isToday = sameDay(day, new Date());
 
               return (
                 <button
                   key={day.toISOString()}
-                  className={`month-grid-day ${isCurrentMonth ? "" : "is-muted"} ${sameDay(day, selectedDay) ? "is-selected" : ""}`.trim()}
-                  onClick={() => setSelectedDay(day)}
+                  className={`modern-day ${isCurrentMonth ? "" : "is-muted"} ${hasEvents ? "has-event" : ""} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}`.trim()}
+                  onClick={() => {
+                    setSelectedDay(day);
+                    if (!isCurrentMonth) {
+                      setCurrentMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+                    }
+                  }}
                   title={dayEvents.map((event) => event.title).join(", ")}
                 >
-                  <span className="month-grid-date">{day.getDate()}</span>
-                  {dayEvents.length ? (
-                    <div className="month-grid-events">
-                      <span className={`calendar-dot ${topState?.tone || "tone-blue"}`} />
-                      <small>{dayEvents.length} etkinlik</small>
-                    </div>
-                  ) : (
-                    <small className="month-grid-empty">Boş</small>
-                  )}
+                  <span>{day.getDate()}</span>
+                  {hasEvents ? <small>{dayEvents.length}</small> : null}
                 </button>
               );
             })}
           </div>
-        </SectionCard>
 
-        <SectionCard
-          title={selectedDay.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })}
-          description="Seçili günün etkinlikleri ve durum bilgisi."
-        >
-          <div className="stack-list">
+          <button className="calendar-today-button" type="button" onClick={goToToday}>
+            Bugüne dön
+          </button>
+        </section>
+
+        <section className="selected-day-panel">
+          <div className="selected-day-head">
+            <span>Seçili Gün</span>
+            <h2>{selectedDay.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })}</h2>
+          </div>
+          <div className="selected-event-list">
             {selectedEvents.length ? (
               selectedEvents.map((event) => {
                 const state = getEventVisualState(event);
                 return (
-                  <Link key={event.id} className="list-row" to={`/events/${event.id}`}>
-                    <strong>{event.title}</strong>
-                    <span>{event.clubName} • {formatEventTimeRange(event.startDate, event.endDate)}</span>
-                    <span>{event.locationDetails || `${event.roomName || "Salon bilgisi yok"} / ${event.building || "Kampüs"}`}</span>
-                    <span className={`pill ${state.tone}`}>{state.label}</span>
+                  <Link key={event.id} className="selected-event-card" to={`/events/${event.id}`}>
+                    <div>
+                      <span className={`pill ${state.tone}`}>{state.label}</span>
+                      <strong>{event.title}</strong>
+                      <small>{event.clubName || event.organizerText || "Maltepe Üniversitesi"}</small>
+                    </div>
+                    <p>{formatEventTimeRange(event.startDate, event.endDate)}</p>
+                    <span>{event.locationDetails || event.roomName || "Kampüs"}</span>
                   </Link>
                 );
               })
             ) : allEvents.length ? (
-              <EmptyState title="Bugün için etkinlik yok." description="Takvimde başka bir güne tıklayarak o günün planlarını görebilirsiniz." />
+              <EmptyState title="Bu gün için etkinlik yok." description="Etkinlik olan günler takvimde renkli görünür." />
             ) : (
-              <EmptyState title="Takvimde gösterilecek etkinlik yok." description="Etkinlikler eklendiğinde burada otomatik olarak listelenecek." />
+              <EmptyState title="Takvimde gösterilecek etkinlik yok." description="Etkinlikler eklendiğinde burada listelenecek." />
             )}
           </div>
-        </SectionCard>
+        </section>
       </div>
     </div>
   );

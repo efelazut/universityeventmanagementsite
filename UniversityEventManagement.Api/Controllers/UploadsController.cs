@@ -20,7 +20,7 @@ public class UploadsController : ControllerBase
     [Authorize(Roles = "Admin,ClubManager")]
     [HttpPost("image")]
     [RequestSizeLimit(MaxFileSize)]
-    public async Task<ActionResult<UploadResponse>> UploadImage([FromForm] IFormFile? file, [FromForm] string? category)
+    public async Task<ActionResult<UploadResponse>> UploadImage(IFormFile? file, [FromForm] string? category)
     {
         if (file is null || file.Length == 0)
         {

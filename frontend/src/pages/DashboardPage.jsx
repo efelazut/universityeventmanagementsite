@@ -41,12 +41,18 @@ export function DashboardPage() {
     return <div className="loading-state loading-state-large">Panel hazırlanıyor...</div>;
   }
 
-  if ([dashboard, clubStats, eventStats, roomStats, myStats, myEvents, upcoming].some((query) => query.error)) {
-    return <div className="error-panel">Panel verileri alınamadı.</div>;
-  }
+  const panelErrors = [dashboard, clubStats, eventStats, roomStats, myStats, myEvents, upcoming].filter((query) => query.error);
+  const dashboardData = dashboard.data || { eventCount: 0, upcomingEventCount: 0, totalAttendance: 0, averageRating: 0 };
+  const personalData = myStats.data || { registeredEventCount: 0, attendedEventCount: 0, upcomingEventCount: 0, reviewCount: 0, averageRatingGiven: 0 };
+  const personalEvents = myEvents.data || { attendedEvents: [] };
+  const upcomingEvents = Array.isArray(upcoming.data) ? upcoming.data : [];
 
   return (
     <div className="page-stack">
+      {panelErrors.length ? (
+        <div className="notice-box">Bazı panel verileri geçici olarak alınamadı. Görünebilen bilgiler listelenmeye devam ediyor.</div>
+      ) : null}
+
       <section className="page-hero">
         <div>
           <p className="eyebrow">{getRoleTitle(user.role)}</p>
@@ -89,49 +95,39 @@ export function DashboardPage() {
           </SectionCard>
 
           <div className="stat-grid">
-            <StatCard title="Toplam Etkinlik" value={dashboard.data.eventCount} accent="teal" subtitle="Sistem genelinde" />
-            <StatCard title="Yaklaşan" value={dashboard.data.upcomingEventCount} accent="blue" subtitle="Planlanan etkinlik" />
-            <StatCard title="Katılım" value={dashboard.data.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
-            <StatCard
-              title="Ortalama Puan"
-              value={dashboard.data.averageRating ? dashboard.data.averageRating.toFixed(1) : "Yok"}
-              accent="rose"
-              subtitle="Yorumlardan"
-            />
+            <StatCard title="Toplam Etkinlik" value={dashboardData.eventCount} accent="teal" subtitle="Sistem genelinde" />
+            <StatCard title="Yaklaşan" value={dashboardData.upcomingEventCount} accent="blue" subtitle="Planlanan etkinlik" />
+            <StatCard title="Katılım" value={dashboardData.totalAttendance} accent="orange" subtitle="İşlenmiş yoklama" />
+            <StatCard title="Ortalama Puan" value={dashboardData.averageRating ? dashboardData.averageRating.toFixed(1) : "Yok"} accent="rose" subtitle="Yorumlardan" />
           </div>
 
           <div className="two-column">
             <SectionCard title="Kulüp Durumu" description="Etkinlik üretimi.">
-              <Bars data={clubStats.data} xKey="clubName" dataKey="eventCount" />
+              <Bars data={clubStats.data || []} xKey="clubName" dataKey="eventCount" />
             </SectionCard>
             <SectionCard title="Salon Yoğunluğu" description="Kullanım baskısı.">
-              <Bars data={roomStats.data} xKey="roomName" dataKey="eventCount" />
+              <Bars data={roomStats.data || []} xKey="roomName" dataKey="eventCount" />
             </SectionCard>
           </div>
 
           <SectionCard title="Etkinlik Özeti" description="Doluluk oranları.">
-            <Bars data={eventStats.data} xKey="title" dataKey="fillRate" />
+            <Bars data={eventStats.data || []} xKey="title" dataKey="fillRate" />
           </SectionCard>
         </>
       ) : (
         <>
           <div className="stat-grid">
-            <StatCard title="Kayıtlı Etkinlik" value={myStats.data.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
-            <StatCard title="Katıldığım" value={myStats.data.attendedEventCount} accent="blue" subtitle="İşlenmiş katılım" />
-            <StatCard title="Yaklaşan Plan" value={myStats.data.upcomingEventCount} accent="orange" subtitle="Ajandada" />
-            <StatCard
-              title="Verdiğim Puan"
-              value={myStats.data.reviewCount ? myStats.data.averageRatingGiven.toFixed(1) : "Yok"}
-              accent="rose"
-              subtitle={`${myStats.data.reviewCount} değerlendirme`}
-            />
+            <StatCard title="Kayıtlı Etkinlik" value={personalData.registeredEventCount} accent="teal" subtitle="Toplam kayıt" />
+            <StatCard title="Katıldığım" value={personalData.attendedEventCount} accent="blue" subtitle="İşlenmiş katılım" />
+            <StatCard title="Yaklaşan Plan" value={personalData.upcomingEventCount} accent="orange" subtitle="Ajandada" />
+            <StatCard title="Verdiğim Puan" value={personalData.reviewCount ? personalData.averageRatingGiven.toFixed(1) : "Yok"} accent="rose" subtitle={`${personalData.reviewCount} değerlendirme`} />
           </div>
 
           <div className="two-column">
             <SectionCard title="Yaklaşan Etkinlikler" description="Sıradaki planlar.">
               <div className="stack-list">
-                {upcoming.data.slice(0, 5).length ? (
-                  upcoming.data.slice(0, 5).map((item) => (
+                {upcomingEvents.slice(0, 5).length ? (
+                  upcomingEvents.slice(0, 5).map((item) => (
                     <Link key={item.id} className="list-row" to={`/events/${item.id}`}>
                       <strong>{item.title}</strong>
                       <span>
@@ -145,21 +141,21 @@ export function DashboardPage() {
                     </Link>
                   ))
                 ) : (
-                  <EmptyState title="Yaklaşan etkinlik yok." description="Yeni planlar burada görünür." icon="Tk" />
+                  <EmptyState title="Yaklaşan etkinlik yok." description="Yeni planlar burada görünür." icon="calendar" />
                 )}
               </div>
             </SectionCard>
             <SectionCard title="Katılım Geçmişi" description="Tamamlanan etkinlikler.">
               <div className="stack-list">
-                {myEvents.data.attendedEvents.length ? (
-                  myEvents.data.attendedEvents.map((item) => (
+                {personalEvents.attendedEvents.length ? (
+                  personalEvents.attendedEvents.map((item) => (
                     <Link key={item.id} className="list-row" to={`/events/${item.id}`}>
                       <strong>{item.title}</strong>
                       <span>{new Date(item.startDate).toLocaleDateString("tr-TR")} • Katıldınız</span>
                     </Link>
                   ))
                 ) : (
-                  <EmptyState title="Katılım geçmişi boş." description="İşlenmiş katılımlar burada görünür." icon="Kt" />
+                  <EmptyState title="Katılım geçmişi boş." description="İşlenmiş katılımlar burada görünür." icon="calendar" />
                 )}
               </div>
             </SectionCard>

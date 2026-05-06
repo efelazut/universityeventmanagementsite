@@ -218,7 +218,7 @@ public class UserService : IUserService
             .AsNoTracking()
             .Include(item => item.Club)
             .Include(item => item.Reviews)
-            .Where(item => managedClubIds.Contains(item.ClubId))
+            .Where(item => item.ClubId.HasValue && managedClubIds.Contains(item.ClubId.Value))
             .OrderByDescending(item => item.StartDate)
             .ToList();
 

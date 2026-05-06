@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
@@ -16,22 +17,22 @@ public class StatisticsService : IStatisticsService
     public DashboardStatisticsResponse GetDashboard()
     {
         var clubs = _dbContext.Clubs.AsNoTracking().ToList();
-        var students = _dbContext.Users.AsNoTracking().Where(user => user.Role == "Student").ToList();
         var events = _dbContext.Events.AsNoTracking().ToList();
         var registrations = _dbContext.Registrations.AsNoTracking().ToList();
         var reviews = _dbContext.EventReviews.AsNoTracking().ToList();
+        var totalAnonymousMembers = _dbContext.ClubStatistics.AsNoTracking().Sum(item => item.TotalMembers);
         var now = DateTime.UtcNow;
 
         return new DashboardStatisticsResponse
         {
-            TotalStudents = students.Count,
-            ActiveMemberCount = students.Count(user => user.IsActiveMember),
+            TotalStudents = totalAnonymousMembers,
+            ActiveMemberCount = totalAnonymousMembers,
             ClubCount = clubs.Count,
             EventCount = events.Count,
-            PastEventCount = events.Count(@event => @event.EndDate < now),
-            UpcomingEventCount = events.Count(@event => @event.StartDate >= now),
+            PastEventCount = events.Count(@event => @event.EndDate < now || @event.IsPastEvent),
+            UpcomingEventCount = events.Count(@event => @event.StartDate >= now && !@event.IsPastEvent),
             TotalRegistrations = registrations.Count,
-            TotalAttendance = registrations.Count(registration => registration.Attended),
+            TotalAttendance = events.Sum(@event => @event.ParticipantCount ?? @event.ActualAttendanceCount),
             AverageEventCost = events.Count == 0 ? 0 : events.Average(@event => @event.PosterCost + @event.CateringCost + @event.SpeakerFee),
             AverageRating = reviews.Count == 0 ? 0 : reviews.Average(review => review.Rating),
             ClubPresidents = clubs.Select(club => $"{club.Name} - {club.PresidentName}").ToList()
@@ -41,23 +42,29 @@ public class StatisticsService : IStatisticsService
     public IReadOnlyList<ClubStatisticsItemResponse> GetClubStatistics()
     {
         var eventCounts = _dbContext.Events.AsNoTracking()
-            .GroupBy(@event => @event.ClubId)
+            .Where(@event => @event.ClubId.HasValue)
+            .GroupBy(@event => @event.ClubId!.Value)
             .ToDictionary(group => group.Key, group => group.Count());
 
-        var memberCounts = _dbContext.Users.AsNoTracking()
-            .Where(user => user.IsActiveMember && user.ClubId.HasValue)
-            .GroupBy(user => user.ClubId!.Value)
-            .ToDictionary(group => group.Key, group => group.Count());
+        var memberCounts = _dbContext.ClubStatistics.AsNoTracking()
+            .GroupBy(item => item.ClubId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.AcademicYear).First());
 
         return _dbContext.Clubs.AsNoTracking()
             .ToList()
-            .Select(club => new ClubStatisticsItemResponse
+            .Select(club =>
             {
-                ClubId = club.Id,
-                ClubName = club.Name,
-                PresidentName = club.PresidentName,
-                EventCount = eventCounts.TryGetValue(club.Id, out var eventCount) ? eventCount : 0,
-                ActiveMemberCount = memberCounts.TryGetValue(club.Id, out var memberCount) ? memberCount : 0
+                memberCounts.TryGetValue(club.Id, out var statistic);
+                return new ClubStatisticsItemResponse
+                {
+                    ClubId = club.Id,
+                    ClubName = club.Name,
+                    PresidentName = club.PresidentName,
+                    EventCount = eventCounts.TryGetValue(club.Id, out var eventCount) ? eventCount : 0,
+                    ActiveMemberCount = statistic?.TotalMembers ?? club.ActualMemberCount ?? club.DeclaredMemberCount ?? 0,
+                    ActualMemberCount = club.ActualMemberCount,
+                    AcademicYear = statistic?.AcademicYear ?? club.AcademicYear
+                };
             })
             .OrderByDescending(item => item.EventCount)
             .ThenBy(item => item.ClubName)
@@ -76,10 +83,10 @@ public class StatisticsService : IStatisticsService
                 Title = @event.Title,
                 Status = @event.Status,
                 RegistrationCount = @event.Registrations.Count,
-                ActualAttendanceCount = @event.ActualAttendanceCount,
+                ActualAttendanceCount = @event.ParticipantCount ?? @event.ActualAttendanceCount,
                 TotalCost = @event.PosterCost + @event.CateringCost + @event.SpeakerFee,
-                IsPast = @event.EndDate < now,
-                FillRate = @event.Capacity == 0 ? 0 : (double)@event.Registrations.Count / @event.Capacity * 100,
+                IsPast = @event.EndDate < now || @event.IsPastEvent,
+                FillRate = @event.Capacity == 0 ? 0 : (double)(@event.ParticipantCount ?? @event.Registrations.Count) / @event.Capacity * 100,
                 AverageRating = @event.Reviews.Count == 0 ? 0 : @event.Reviews.Average(review => review.Rating)
             })
             .OrderByDescending(item => item.IsPast)
@@ -90,7 +97,8 @@ public class StatisticsService : IStatisticsService
     public IReadOnlyList<RoomPopularityResponse> GetRoomStatistics()
     {
         var eventCounts = _dbContext.Events.AsNoTracking()
-            .GroupBy(@event => @event.RoomId)
+            .Where(@event => @event.RoomId.HasValue)
+            .GroupBy(@event => @event.RoomId!.Value)
             .ToDictionary(group => group.Key, group => group.Count());
 
         return _dbContext.Rooms.AsNoTracking()
@@ -110,21 +118,39 @@ public class StatisticsService : IStatisticsService
 
     public StudentStatisticsResponse GetStudentStatistics()
     {
-        var students = _dbContext.Users.AsNoTracking().Where(user => user.Role == "Student").ToList();
+        var statistics = _dbContext.ClubStatistics.AsNoTracking().ToList();
 
         return new StudentStatisticsResponse
         {
-            TotalStudentCount = students.Count,
-            ActiveMemberCount = students.Count(student => student.IsActiveMember),
-            FacultyDistribution = students
-                .GroupBy(student => student.Faculty)
-                .OrderBy(group => group.Key)
-                .ToDictionary(group => group.Key, group => group.Count()),
-            DepartmentDistribution = students
-                .GroupBy(student => student.Department)
-                .OrderBy(group => group.Key)
-                .ToDictionary(group => group.Key, group => group.Count())
+            TotalStudentCount = statistics.Sum(item => item.TotalMembers),
+            ActiveMemberCount = statistics.Sum(item => item.TotalMembers),
+            FacultyDistribution = MergeJsonDistributions(statistics.Select(item => item.FacultyDistributionJson)),
+            DepartmentDistribution = MergeJsonDistributions(statistics.Select(item => item.DepartmentDistributionJson))
         };
+    }
+
+    public ImportStatusResponse GetImportStatus()
+    {
+        var lastRun = _dbContext.ImportRuns.AsNoTracking().OrderByDescending(item => item.ImportedAt).FirstOrDefault();
+        return new ImportStatusResponse
+        {
+            TotalClubs = _dbContext.Clubs.Count(),
+            TotalEvents = _dbContext.Events.Count(),
+            TotalRooms = _dbContext.Rooms.Count(),
+            TotalClubStatistics = _dbContext.ClubStatistics.Count(),
+            WarningCount = lastRun?.WarningCount ?? 0,
+            LastImportedAt = lastRun?.ImportedAt,
+            Source = lastRun?.Source ?? string.Empty,
+            Warnings = string.IsNullOrWhiteSpace(lastRun?.WarningSummaryJson)
+                ? []
+                : JsonSerializer.Deserialize<List<string>>(lastRun.WarningSummaryJson) ?? []
+        };
+    }
+
+    public async Task<ServiceResult<ImportStatusResponse>> ReseedImportAsync()
+    {
+        await AppDbSeeder.ReseedAsync(_dbContext);
+        return ServiceResult<ImportStatusResponse>.Ok(GetImportStatus());
     }
 
     public ServiceResult<PersonalStatisticsResponse> GetPersonalStatistics(string email)
@@ -157,5 +183,25 @@ public class StatisticsService : IStatisticsService
             ReviewCount = reviews.Count,
             AverageRatingGiven = reviews.Count == 0 ? 0 : reviews.Average(item => item.Rating)
         });
+    }
+
+    private static Dictionary<string, int> MergeJsonDistributions(IEnumerable<string> payloads)
+    {
+        var result = new Dictionary<string, int>();
+        foreach (var payload in payloads)
+        {
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                continue;
+            }
+
+            var values = JsonSerializer.Deserialize<Dictionary<string, int>>(payload) ?? [];
+            foreach (var (key, count) in values)
+            {
+                result[key] = result.TryGetValue(key, out var existing) ? existing + count : count;
+            }
+        }
+
+        return result.OrderBy(item => item.Key).ToDictionary(item => item.Key, item => item.Value);
     }
 }

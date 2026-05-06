@@ -7,4 +7,6 @@ public class ClubStatisticsItemResponse
     public string PresidentName { get; set; } = string.Empty;
     public int EventCount { get; set; }
     public int ActiveMemberCount { get; set; }
+    public int? ActualMemberCount { get; set; }
+    public string AcademicYear { get; set; } = string.Empty;
 }

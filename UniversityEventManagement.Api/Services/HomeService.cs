@@ -42,7 +42,7 @@ public class HomeService : IHomeService
                 + item.ReviewCount * 2
                 + item.RegistrationCount * 1.4
                 + item.ActualAttendanceCount
-                + (clubRatings.TryGetValue(item.ClubId, out var clubRating) ? clubRating * 3 : 0))
+                + (item.ClubId.HasValue && clubRatings.TryGetValue(item.ClubId.Value, out var clubRating) ? clubRating * 3 : 0))
             .Take(4)
             .ToList();
 
@@ -53,7 +53,7 @@ public class HomeService : IHomeService
                 .OrderByDescending(item => item.AverageRating * 5
                     + item.ReviewCount * 2
                     + item.RegistrationCount
-                    + (clubRatings.TryGetValue(item.ClubId, out var clubRating) ? clubRating * 3 : 0))
+                    + (item.ClubId.HasValue && clubRatings.TryGetValue(item.ClubId.Value, out var clubRating) ? clubRating * 3 : 0))
                 .ThenByDescending(item => item.StartDate)
                 .Take(4 - featuredEvents.Count)
                 .ToList();

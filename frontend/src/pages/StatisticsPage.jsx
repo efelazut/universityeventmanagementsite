@@ -8,7 +8,9 @@ import {
   fetchClubStats,
   fetchDashboard,
   fetchEventStats,
+  fetchImportStatus,
   fetchMyStats,
+  reseedImport,
   fetchRoomStats,
   fetchStudentStats
 } from "../services/dashboardService";
@@ -16,6 +18,14 @@ import { fetchMyEvents } from "../services/resourceService";
 
 function toPieData(record = {}) {
   return Object.entries(record).map(([name, value]) => ({ name, value }));
+}
+
+function translateImportWarning(value = "") {
+  return String(value)
+    .replace("Invalid calendar date", "Geçersiz tarih")
+    .replace("Unknown date format", "Tarih biçimi tanınmadı")
+    .replace("row", "satır")
+    .replace("satır", "satır");
 }
 
 export function StatisticsPage() {
@@ -41,14 +51,27 @@ export function StatisticsPage() {
     () => (isManagement ? fetchStudentStats(user.token, apiBaseUrl) : Promise.resolve(null)),
     [apiBaseUrl, isManagement, user?.token]
   );
+  const importStatus = useAsyncData(
+    () => (user.role === "Admin" ? fetchImportStatus(user.token, apiBaseUrl) : Promise.resolve(null)),
+    [apiBaseUrl, user?.role, user?.token]
+  );
   const myStats = useAsyncData(() => fetchMyStats(user.token, apiBaseUrl), [apiBaseUrl, user?.token]);
   const myEvents = useAsyncData(() => fetchMyEvents(user.token, apiBaseUrl), [apiBaseUrl, user?.token]);
 
-  if ([dashboard, clubs, events, rooms, students, myStats, myEvents].some((query) => query.loading)) {
+  const handleReseed = async () => {
+    if (!window.confirm("Gerçek SKS verisi yeniden yüklensin mi? Mevcut kulüp, etkinlik ve salon verileri yenilenir.")) {
+      return;
+    }
+
+    await reseedImport(user.token, apiBaseUrl);
+    await Promise.all([dashboard.reload(), clubs.reload(), events.reload(), rooms.reload(), students.reload(), importStatus.reload()]);
+  };
+
+  if ([dashboard, clubs, events, rooms, students, importStatus, myStats, myEvents].some((query) => query.loading)) {
     return <div className="loading-state loading-state-large">İstatistikler hazırlanıyor...</div>;
   }
 
-  if ([dashboard, clubs, events, rooms, students, myStats, myEvents].some((query) => query.error)) {
+  if ([dashboard, clubs, events, rooms, students, importStatus, myStats, myEvents].some((query) => query.error)) {
     return <div className="error-panel">İstatistik verileri alınamadı.</div>;
   }
 
@@ -161,6 +184,28 @@ export function StatisticsPage() {
           />
         </div>
       </section>
+
+      {user.role === "Admin" && importStatus.data ? (
+        <SectionCard
+          title="Veri Aktarım Durumu"
+          description="Gerçek SKS kaynaklarından üretilen veri özeti."
+          action={<button className="ghost-button" type="button" onClick={handleReseed}>Yeniden Yükle</button>}
+        >
+          <div className="insight-grid">
+            <div className="insight-card"><strong>{importStatus.data.totalClubs}</strong><span>Kulüp</span></div>
+            <div className="insight-card"><strong>{importStatus.data.totalEvents}</strong><span>Etkinlik</span></div>
+            <div className="insight-card"><strong>{importStatus.data.totalRooms}</strong><span>Salon</span></div>
+            <div className="insight-card"><strong>{importStatus.data.warningCount}</strong><span>Uyarı</span></div>
+          </div>
+          {importStatus.data.warnings?.length ? (
+            <div className="stack-list">
+              {importStatus.data.warnings.slice(0, 4).map((warning) => (
+                <div key={warning} className="list-row"><span>{translateImportWarning(warning)}</span></div>
+              ))}
+            </div>
+          ) : null}
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Öne Çıkan Sinyaller" description="En görünür veriler.">
         <div className="insight-grid">

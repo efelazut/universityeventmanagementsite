@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
     public DbSet<MessageThread> MessageThreads => Set<MessageThread>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<MessageThreadReadState> MessageThreadReadStates => Set<MessageThreadReadState>();
+    public DbSet<ClubStatistic> ClubStatistics => Set<ClubStatistic>();
+    public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,10 +116,22 @@ public class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .IsRequired();
 
+            entity.Property(club => club.InstagramUrl)
+                .HasMaxLength(500);
+
+            entity.Property(club => club.AcademicYear)
+                .HasMaxLength(40);
+
+            entity.Property(club => club.LogoUrl)
+                .HasMaxLength(500);
+
+            entity.Property(club => club.SourceKey)
+                .HasMaxLength(220);
+
             entity.HasMany(club => club.Events)
                 .WithOne(@event => @event.Club)
                 .HasForeignKey(@event => @event.ClubId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Room>(entity =>
@@ -138,6 +152,12 @@ public class AppDbContext : DbContext
 
             entity.Property(room => room.Description)
                 .HasMaxLength(500);
+
+            entity.Property(room => room.Notes)
+                .HasMaxLength(500);
+
+            entity.Property(room => room.SourceKey)
+                .HasMaxLength(220);
 
             entity.HasIndex(room => new { room.Name, room.Building })
                 .IsUnique();
@@ -174,6 +194,18 @@ public class AppDbContext : DbContext
             entity.Property(@event => @event.LocationDetails)
                 .HasMaxLength(300);
 
+            entity.Property(@event => @event.OrganizerText)
+                .HasMaxLength(1000);
+
+            entity.Property(@event => @event.LocationText)
+                .HasMaxLength(500);
+
+            entity.Property(@event => @event.SourceName)
+                .HasMaxLength(180);
+
+            entity.Property(@event => @event.SourceKey)
+                .HasMaxLength(260);
+
             entity.Property(@event => @event.Status)
                 .HasMaxLength(50)
                 .IsRequired();
@@ -198,7 +230,42 @@ public class AppDbContext : DbContext
             entity.HasOne(@event => @event.Room)
                 .WithMany(room => room.Events)
                 .HasForeignKey(@event => @event.RoomId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ClubStatistic>(entity =>
+        {
+            entity.ToTable("ClubStatistics");
+
+            entity.Property(statistic => statistic.AcademicYear)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(statistic => statistic.FacultyDistributionJson)
+                .HasColumnType("nvarchar(max)");
+
+            entity.Property(statistic => statistic.DepartmentDistributionJson)
+                .HasColumnType("nvarchar(max)");
+
+            entity.HasIndex(statistic => new { statistic.ClubId, statistic.AcademicYear })
+                .IsUnique();
+
+            entity.HasOne(statistic => statistic.Club)
+                .WithMany(club => club.Statistics)
+                .HasForeignKey(statistic => statistic.ClubId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ImportRun>(entity =>
+        {
+            entity.ToTable("ImportRuns");
+
+            entity.Property(run => run.Source)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            entity.Property(run => run.WarningSummaryJson)
+                .HasColumnType("nvarchar(max)");
         });
 
         modelBuilder.Entity<Registration>(entity =>

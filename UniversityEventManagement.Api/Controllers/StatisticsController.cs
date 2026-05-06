@@ -52,6 +52,20 @@ public class StatisticsController : ControllerBase
         return Ok(_statisticsService.GetStudentStatistics());
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet("import-status")]
+    public ActionResult<ImportStatusResponse> GetImportStatus()
+    {
+        return Ok(_statisticsService.GetImportStatus());
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("import/reseed")]
+    public async Task<ActionResult<ImportStatusResponse>> ReseedImport()
+    {
+        return this.ToActionResult(await _statisticsService.ReseedImportAsync());
+    }
+
     [Authorize]
     [HttpGet("me")]
     public ActionResult<PersonalStatisticsResponse> GetMyStatistics()

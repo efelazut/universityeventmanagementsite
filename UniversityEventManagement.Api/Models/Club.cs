@@ -12,10 +12,18 @@ public class Club
     public string HighlightTitle { get; set; } = string.Empty;
     public string PresidentName { get; set; } = string.Empty;
     public string PresidentEmail { get; set; } = string.Empty;
+    public string InstagramUrl { get; set; } = string.Empty;
+    public int? MemberCapacity { get; set; }
+    public int? DeclaredMemberCount { get; set; }
+    public int? ActualMemberCount { get; set; }
+    public string AcademicYear { get; set; } = string.Empty;
+    public string LogoUrl { get; set; } = string.Empty;
+    public string SourceKey { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
     public ICollection<Event> Events { get; set; } = new List<Event>();
     public ICollection<User> Members { get; set; } = new List<User>();
     public ICollection<ClubMembership> Memberships { get; set; } = new List<ClubMembership>();
     public ICollection<MessageThread> MessageThreads { get; set; } = new List<MessageThread>();
+    public ICollection<ClubStatistic> Statistics { get; set; } = new List<ClubStatistic>();
 }

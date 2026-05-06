@@ -130,6 +130,9 @@ export function ClubDetailPage() {
   const eventsError = events.error && !isOptionalAuthError(events.error) ? events.error : "";
   const statsError = stats.error && !isOptionalAuthError(stats.error) ? stats.error : "";
   const statsData = statsError ? { activeMemberCount: 0, eventCount: 0, totalRegistrations: 0 } : (stats.data || { activeMemberCount: 0, eventCount: 0, totalRegistrations: 0 });
+  const facultyDistribution = Object.entries(statsData.facultyDistribution || {}).slice(0, 6);
+  const departmentDistribution = Object.entries(statsData.departmentDistribution || {}).slice(0, 6);
+  const displayedMemberCount = statsData.actualMemberCount ?? statsData.activeMemberCount ?? clubData.actualMemberCount ?? clubData.declaredMemberCount ?? 0;
   const memberList = membersError ? [] : (Array.isArray(members.data) ? members.data : []);
   const clubEvents = eventsError ? [] : (Array.isArray(events.data) ? events.data : []);
   const isMember = memberList.some((item) => item.userId === user?.id);
@@ -296,6 +299,7 @@ export function ClubDetailPage() {
           <div className="inline-actions">
             {user?.role === "Student" && !isMember ? <button className="primary-button" type="button" onClick={handleJoin}>Kulübe Katıl</button> : null}
             {user ? <button className="ghost-button" type="button" onClick={handleMessage}>Mesaj Gönder</button> : null}
+            {clubData.instagramUrl ? <a className="ghost-button link-button" href={clubData.instagramUrl} target="_blank" rel="noreferrer">Instagram</a> : null}
             {user?.role === "Admin" ? <Link className="ghost-button link-button" to={`/clubs/${clubData.id}/edit`}>Düzenle</Link> : null}
             {canDeleteClub ? (
               <button className="ghost-button destructive-button" type="button" onClick={() => openRoleDialog({ type: "delete-club" })} disabled={busyAction === "delete-club-club"}>
@@ -369,10 +373,24 @@ export function ClubDetailPage() {
 
       <SectionCard title="Detaylar">
         <div className="stat-grid club-detail-stats">
-          <StatCard title="Aktif Üye" value={statsData.activeMemberCount} accent="teal" subtitle="Topluluk ağı" />
+          <StatCard title="Üye" value={displayedMemberCount} accent="teal" subtitle={statsData.academicYear || clubData.academicYear || "Anonim toplam"} />
           <StatCard title="Etkinlik" value={statsData.eventCount} accent="blue" subtitle="Toplam üretim" />
-          <StatCard title="Katılım" value={statsData.totalRegistrations} accent="orange" subtitle="Kayıt sayısı" />
+          <StatCard title="Katılım" value={statsData.totalRegistrations} accent="orange" subtitle="Etkinlik toplamı" />
           <StatCard title="Kulüp Puanı" value={<RatingStars value={clubData.averageRating} reviewCount={clubData.reviewCount} compact />} accent="rose" subtitle="Etkinlik değerlendirmeleri" />
+        </div>
+        <div className="two-column">
+          <div className="stack-list">
+            <strong>Fakülte dağılımı</strong>
+            {facultyDistribution.length ? facultyDistribution.map(([name, count]) => (
+              <div key={name} className="list-row list-row-split"><span>{name}</span><strong>{count}</strong></div>
+            )) : <span>Anonim dağılım verisi yok.</span>}
+          </div>
+          <div className="stack-list">
+            <strong>Bölüm dağılımı</strong>
+            {departmentDistribution.length ? departmentDistribution.map(([name, count]) => (
+              <div key={name} className="list-row list-row-split"><span>{name}</span><strong>{count}</strong></div>
+            )) : <span>Anonim dağılım verisi yok.</span>}
+          </div>
         </div>
       </SectionCard>
 

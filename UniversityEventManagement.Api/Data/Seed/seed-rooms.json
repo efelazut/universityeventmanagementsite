@@ -1,0 +1,116 @@
+﻿[
+    {
+        "Name":  "Eğitim fak amfi",
+        "Capacity":  200,
+        "Building":  null,
+        "Notes":  "200 KİŞİ"
+    },
+    {
+        "Name":  "Erkut Özel Konferans Salonu (Yabancı Diller Fak.)",
+        "Capacity":  430,
+        "Building":  null,
+        "Notes":  "430 KİŞİ"
+    },
+    {
+        "Name":  "Hukuk amfi",
+        "Capacity":  260,
+        "Building":  null,
+        "Notes":  "260 KİŞİ"
+    },
+    {
+        "Name":  "İnsan ve toplum bilimleri Fak. Amfi",
+        "Capacity":  200,
+        "Building":  null,
+        "Notes":  "200 KİŞİ"
+    },
+    {
+        "Name":  "İşletme Amfi",
+        "Capacity":  266,
+        "Building":  null,
+        "Notes":  "266 KİŞİ"
+    },
+    {
+        "Name":  "Mimar H. Vedat Çakırca Konferans Salonu",
+        "Capacity":  1500,
+        "Building":  null,
+        "Notes":  "1500 KİŞİ"
+    },
+    {
+        "Name":  "Mimarlık Amfi 291",
+        "Capacity":  291,
+        "Building":  null,
+        "Notes":  "291 KİŞİ"
+    },
+    {
+        "Name":  "Mühendislik Amfisi",
+        "Capacity":  285,
+        "Building":  null,
+        "Notes":  "285 KİŞİ"
+    },
+    {
+        "Name":  "Prof. Dr. Can Solakoğlu Konferans Salonu",
+        "Capacity":  140,
+        "Building":  null,
+        "Notes":  "140 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 1",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 2",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 3",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 4",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 5",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 6",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 7",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 8",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "SKS-KULÜP ODASI 9",
+        "Capacity":  100,
+        "Building":  null,
+        "Notes":  "100 KİŞİ"
+    },
+    {
+        "Name":  "Süha Arın Konferans Salonu(İletişim Fak.)",
+        "Capacity":  374,
+        "Building":  null,
+        "Notes":  "374 KİŞİ"
+    }
+]

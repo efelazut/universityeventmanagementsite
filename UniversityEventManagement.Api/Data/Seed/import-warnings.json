@@ -1,0 +1,16 @@
+﻿[
+    {
+        "Source":  "Anka Etkinlik",
+        "Row":  12,
+        "Field":  "Date",
+        "Value":  "31.02.2026",
+        "Message":  "Invalid calendar date"
+    },
+    {
+        "Source":  "İşletme Kulübü",
+        "Row":  3,
+        "Field":  "Date",
+        "Value":  "Teknik Gezi: \"Kariyer.net\"",
+        "Message":  "Unknown date format"
+    }
+]

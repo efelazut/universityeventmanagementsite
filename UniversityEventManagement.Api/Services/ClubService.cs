@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
@@ -225,6 +226,7 @@ public class ClubService : IClubService
         }
 
         var activeMemberCount = club.Memberships.Count(membership => membership.Status == "Active");
+        var latestStatistic = club.Statistics.OrderByDescending(item => item.AcademicYear).FirstOrDefault();
         var eventCount = club.Events.Count;
         var allRegistrations = club.Events.SelectMany(@event => @event.Registrations).ToList();
 
@@ -232,11 +234,16 @@ public class ClubService : IClubService
         {
             ClubId = club.Id,
             ClubName = club.Name,
-            ActiveMemberCount = activeMemberCount,
+            ActiveMemberCount = latestStatistic?.TotalMembers ?? club.ActualMemberCount ?? club.DeclaredMemberCount ?? activeMemberCount,
             EventCount = eventCount,
             TotalRegistrations = allRegistrations.Count,
-            TotalAttendance = allRegistrations.Count(registration => registration.Attended),
-            TotalBudget = club.Events.Sum(@event => @event.PosterCost + @event.CateringCost + @event.SpeakerFee)
+            TotalAttendance = club.Events.Sum(@event => @event.ParticipantCount ?? @event.ActualAttendanceCount),
+            TotalBudget = club.Events.Sum(@event => @event.PosterCost + @event.CateringCost + @event.SpeakerFee),
+            DeclaredMemberCount = club.DeclaredMemberCount,
+            ActualMemberCount = club.ActualMemberCount,
+            AcademicYear = latestStatistic?.AcademicYear ?? club.AcademicYear,
+            FacultyDistribution = ParseDistribution(latestStatistic?.FacultyDistributionJson),
+            DepartmentDistribution = ParseDistribution(latestStatistic?.DepartmentDistributionJson)
         });
     }
 
@@ -560,7 +567,8 @@ public class ClubService : IClubService
         .Include(club => club.Events)
             .ThenInclude(@event => @event.Registrations)
         .Include(club => club.Memberships)
-        .Include(club => club.Members);
+        .Include(club => club.Members)
+        .Include(club => club.Statistics);
 
     internal static ClubResponse MapClubResponse(Club club)
     {
@@ -579,8 +587,14 @@ public class ClubService : IClubService
             HighlightTitle = club.HighlightTitle,
             PresidentName = club.PresidentName,
             PresidentEmail = club.PresidentEmail,
+            InstagramUrl = club.InstagramUrl,
+            MemberCapacity = club.MemberCapacity,
+            DeclaredMemberCount = club.DeclaredMemberCount,
+            ActualMemberCount = club.ActualMemberCount,
+            AcademicYear = club.AcademicYear,
+            LogoUrl = club.LogoUrl,
             IsActive = club.IsActive,
-            MemberCount = activeMemberships.Count != 0 ? activeMemberships.Count : club.Members.Count,
+            MemberCount = club.ActualMemberCount ?? club.DeclaredMemberCount ?? (activeMemberships.Count != 0 ? activeMemberships.Count : club.Members.Count),
             AverageRating = allReviews.Count == 0 ? 0 : allReviews.Average(review => review.Rating),
             ReviewCount = allReviews.Count,
             RecentEventTitles = club.Events
@@ -602,6 +616,11 @@ public class ClubService : IClubService
         Status = membership.Status,
         JoinedAt = membership.JoinedAt
     };
+
+    private static IReadOnlyDictionary<string, int> ParseDistribution(string? json) =>
+        string.IsNullOrWhiteSpace(json)
+            ? new Dictionary<string, int>()
+            : JsonSerializer.Deserialize<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
 
     private enum ClubManagementLevel
     {

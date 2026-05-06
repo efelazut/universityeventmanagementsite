@@ -9,5 +9,7 @@ public interface IStatisticsService
     IReadOnlyList<EventStatisticsItemResponse> GetEventStatistics();
     IReadOnlyList<RoomPopularityResponse> GetRoomStatistics();
     StudentStatisticsResponse GetStudentStatistics();
+    ImportStatusResponse GetImportStatus();
+    Task<ServiceResult<ImportStatusResponse>> ReseedImportAsync();
     ServiceResult<PersonalStatisticsResponse> GetPersonalStatistics(string email);
 }

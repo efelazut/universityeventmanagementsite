@@ -165,7 +165,8 @@ public class RoomService : IRoomService
     {
         var eventCounts = _dbContext.Events
             .AsNoTracking()
-            .GroupBy(@event => @event.RoomId)
+            .Where(@event => @event.RoomId.HasValue)
+            .GroupBy(@event => @event.RoomId!.Value)
             .ToDictionary(group => group.Key, group => group.Count());
 
         return _dbContext.Rooms
@@ -234,6 +235,7 @@ public class RoomService : IRoomService
         Building = room.Building,
         Type = room.Type,
         Description = room.Description,
+        Notes = room.Notes,
         Capacity = room.Capacity,
         IsAvailable = room.IsAvailable
     };

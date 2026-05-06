@@ -6,3 +6,5 @@ export const fetchEventStats = (token, baseUrl) => apiRequest("/api/Statistics/e
 export const fetchRoomStats = (token, baseUrl) => apiRequest("/api/Statistics/rooms", { token, baseUrl });
 export const fetchStudentStats = (token, baseUrl) => apiRequest("/api/Statistics/students", { token, baseUrl });
 export const fetchMyStats = (token, baseUrl) => apiRequest("/api/Statistics/me", { token, baseUrl });
+export const fetchImportStatus = (token, baseUrl) => apiRequest("/api/Statistics/import-status", { token, baseUrl });
+export const reseedImport = (token, baseUrl) => apiRequest("/api/Statistics/import/reseed", { method: "POST", token, baseUrl });

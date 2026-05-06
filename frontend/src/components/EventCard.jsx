@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { RatingStars } from "./RatingStars";
 import { formatEventDate, getEventVisualState } from "../utils/eventPresentation";
 
 const fallbackImages = {
-  teknoloji: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80",
-  sanat: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1200&q=80",
-  muzik: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80",
-  kariyer: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80",
-  default: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80"
+  teknoloji: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=900&q=75",
+  sanat: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=900&q=75",
+  muzik: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=75",
+  kariyer: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=75",
+  default: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=900&q=75"
 };
 
 function resolveFallback(category) {
@@ -30,17 +29,18 @@ function safeText(value, fallback) {
 }
 
 export function EventCard({ event, actionLabel = "Detay", actionTo, footer, compact = false }) {
+  const organizerName = safeText(event?.clubName || event?.organizerText, "Duzenleyen bilgisi yok");
   const safeEvent = {
     id: Number(event?.id) || 0,
-    title: safeText(event?.title, "Etkinlik adı güncelleniyor"),
-    clubName: safeText(event?.clubName, "Kulüp bilgisi hazırlanıyor"),
-    description: safeText(event?.description, "Etkinlik açıklaması henüz eklenmedi."),
+    title: safeText(event?.title, "Etkinlik adi guncelleniyor"),
+    clubName: organizerName,
+    description: safeText(event?.description, ""),
     category: safeText(event?.category, ""),
     format: safeText(event?.format, "Fiziksel"),
-    locationDetails: safeText(event?.locationDetails, ""),
-    roomName: safeText(event?.roomName, "Salon"),
-    building: safeText(event?.building, "Kampüs"),
-    averageRating: Number(event?.averageRating) || 0,
+    locationDetails: safeText(event?.locationDetails || event?.locationText, ""),
+    roomName: safeText(event?.roomName, ""),
+    building: safeText(event?.building, ""),
+    participantCount: event?.participantCount == null ? null : Number(event.participantCount),
     registrationCount: Number(event?.registrationCount) || 0,
     startDate: event?.startDate || new Date().toISOString(),
     endDate: event?.endDate || event?.startDate || new Date().toISOString(),
@@ -52,6 +52,7 @@ export function EventCard({ event, actionLabel = "Detay", actionTo, footer, comp
   const state = getEventVisualState(safeEvent);
   const fallbackImage = useMemo(() => resolveFallback(safeEvent.category), [safeEvent.category]);
   const [imageSrc, setImageSrc] = useState(safeEvent.imageUrl || fallbackImage);
+  const visibleCount = safeEvent.participantCount ?? safeEvent.registrationCount;
 
   return (
     <article className={`event-card ${compact ? "event-card-compact" : ""}`.trim()}>
@@ -82,6 +83,7 @@ export function EventCard({ event, actionLabel = "Detay", actionTo, footer, comp
           <h3 className="event-title">{safeEvent.title}</h3>
           <div className="event-mini-meta">
             <span>{formatEventDate(safeEvent.startDate)}</span>
+            {visibleCount ? <span>{visibleCount} katilim</span> : null}
           </div>
         </div>
 

@@ -7,6 +7,8 @@ public class Room
     public string Building { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string Notes { get; set; } = string.Empty;
+    public string SourceKey { get; set; } = string.Empty;
     public int Capacity { get; set; }
     public bool IsAvailable { get; set; }
 

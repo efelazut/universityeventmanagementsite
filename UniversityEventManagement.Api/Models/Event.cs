@@ -10,19 +10,26 @@ public class Event
     public string Format { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public string LocationDetails { get; set; } = string.Empty;
+    public string OrganizerText { get; set; } = string.Empty;
+    public string LocationText { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int Capacity { get; set; }
     public bool RequiresApproval { get; set; }
     public bool IsFree { get; set; }
     public decimal Price { get; set; }
-    public int ClubId { get; set; }
-    public int RoomId { get; set; }
+    public int? ClubId { get; set; }
+    public int? RoomId { get; set; }
     public decimal PosterCost { get; set; }
     public decimal CateringCost { get; set; }
     public decimal SpeakerFee { get; set; }
     public string Status { get; set; } = string.Empty;
     public int ActualAttendanceCount { get; set; }
+    public int? ParticipantCount { get; set; }
+    public int? SourceYear { get; set; }
+    public bool IsPastEvent { get; set; }
+    public string SourceName { get; set; } = string.Empty;
+    public string SourceKey { get; set; } = string.Empty;
 
     public Club? Club { get; set; }
     public Room? Room { get; set; }

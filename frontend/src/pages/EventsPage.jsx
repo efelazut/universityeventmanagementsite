@@ -9,22 +9,29 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import { deleteEvent, fetchEvents, fetchMyEvents } from "../services/resourceService";
 
 function normalizeEvent(item = {}) {
+  const organizerText = String(item.organizerText || item.clubName || "").trim();
+
   return {
     id: Number(item.id) || 0,
-    title: String(item.title || "Etkinlik adı güncelleniyor"),
-    clubName: String(item.clubName || "Kulüp bilgisi hazırlanıyor"),
-    description: String(item.description || "Etkinlik açıklaması henüz eklenmedi."),
+    title: String(item.title || "Etkinlik adi guncelleniyor"),
+    clubName: String(item.clubName || organizerText || "Duzenleyen bilgisi yok"),
+    organizerText,
+    description: String(item.description || "Etkinlik aciklamasi henuz eklenmedi."),
     category: String(item.category || ""),
     campus: String(item.campus || ""),
     format: String(item.format || "Fiziksel"),
     imageUrl: String(item.imageUrl || ""),
-    locationDetails: String(item.locationDetails || ""),
+    locationDetails: String(item.locationDetails || item.locationText || ""),
     roomName: String(item.roomName || ""),
     building: String(item.building || ""),
     computedStatus: String(item.computedStatus || item.status || "Upcoming"),
     status: String(item.status || "Upcoming"),
     isFree: Boolean(item.isFree),
-    clubId: Number(item.clubId) || 0,
+    clubId: item.clubId == null ? null : Number(item.clubId) || null,
+    roomId: item.roomId == null ? null : Number(item.roomId) || null,
+    participantCount: item.participantCount == null ? null : Number(item.participantCount),
+    sourceYear: item.sourceYear == null ? null : Number(item.sourceYear),
+    isPastEvent: Boolean(item.isPastEvent),
     averageRating: Number(item.averageRating) || 0,
     registrationCount: Number(item.registrationCount) || 0,
     pendingRegistrationCount: Number(item.pendingRegistrationCount) || 0,
@@ -48,6 +55,7 @@ export function EventsPage() {
     status: "all",
     category: "all"
   });
+  const [activeTimeline, setActiveTimeline] = useState("upcoming");
 
   const events = useMemo(() => {
     if (!Array.isArray(eventsQuery.data)) {
@@ -71,6 +79,7 @@ export function EventsPage() {
         !searchValue ||
         item.title.toLocaleLowerCase("tr-TR").includes(searchValue) ||
         item.clubName.toLocaleLowerCase("tr-TR").includes(searchValue) ||
+        item.organizerText.toLocaleLowerCase("tr-TR").includes(searchValue) ||
         item.description.toLocaleLowerCase("tr-TR").includes(searchValue);
 
       const matchesStatus = filters.status === "all" || item.computedStatus === filters.status;
@@ -80,13 +89,23 @@ export function EventsPage() {
     });
   }, [events, filters]);
 
+  const timelineEvents = useMemo(() => {
+    const now = new Date();
+    return {
+      upcoming: filteredEvents.filter((item) => !item.isPastEvent && item.computedStatus !== "Completed" && new Date(item.endDate) >= now),
+      past: filteredEvents.filter((item) => item.isPastEvent || item.computedStatus === "Completed" || new Date(item.endDate) < now)
+    };
+  }, [filteredEvents]);
+
+  const visibleEvents = timelineEvents[activeTimeline] || [];
+
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Bu etkinliği silmek istediğinize emin misiniz?");
+    const confirmed = window.confirm("Bu etkinligi silmek istediginize emin misiniz?");
     if (!confirmed) return;
 
     try {
       await deleteEvent(id, user.token, apiBaseUrl);
-      setFeedback({ type: "success", text: "Etkinlik başarıyla silindi." });
+      setFeedback({ type: "success", text: "Etkinlik basariyla silindi." });
       await Promise.all([eventsQuery.reload(), myEventsQuery.reload()]);
     } catch (error) {
       setFeedback({ type: "error", text: error.message || "Etkinlik silinemedi." });
@@ -94,14 +113,14 @@ export function EventsPage() {
   };
 
   if (eventsQuery.loading) {
-    return <div className="loading-state loading-state-large">Etkinlikler hazırlanıyor...</div>;
+    return <div className="loading-state loading-state-large">Etkinlikler hazirlaniyor...</div>;
   }
 
   if (eventsQuery.error) {
     return (
       <ErrorState
-        title="Etkinlikler yüklenemedi"
-        description="Etkinlik listesi şu anda alınamıyor."
+        title="Etkinlikler yuklenemedi"
+        description="Etkinlik listesi su anda alinamiyor."
         error={eventsQuery.error}
         onRetry={eventsQuery.reload}
         icon="Et"
@@ -120,7 +139,7 @@ export function EventsPage() {
       ) : null}
 
       {myEventsQuery.error && user ? (
-        <div className="notice-box">Kişisel etkinlik durumu geçici olarak alınamadı. Genel liste görünmeye devam ediyor.</div>
+        <div className="notice-box">Kisisel etkinlik durumu gecici olarak alinamadi. Genel liste gorunmeye devam ediyor.</div>
       ) : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
@@ -128,27 +147,27 @@ export function EventsPage() {
         <summary>
           <span className="section-title-mark" aria-hidden="true" />
           <strong>Filtreler</strong>
-          <small>{filteredEvents.length} etkinlik</small>
+          <small>{visibleEvents.length} etkinlik</small>
         </summary>
         <div className="filter-toolbar event-filter-toolbar">
           <label className="filter-field">
             <span>Ara</span>
-            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulüp adı" />
+            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulup adi" />
           </label>
           <label className="filter-field">
             <span>Durum</span>
             <select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}>
-              <option value="all">Tümü</option>
-              <option value="Upcoming">Yaklaşan</option>
+              <option value="all">Tumu</option>
+              <option value="Upcoming">Yaklasan</option>
               <option value="Ongoing">Devam Eden</option>
-              <option value="Completed">Geçmiş</option>
-              <option value="Cancelled">İptal Edildi</option>
+              <option value="Completed">Gecmis</option>
+              <option value="Cancelled">Iptal Edildi</option>
             </select>
           </label>
           <label className="filter-field">
             <span>Kategori</span>
             <select value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })}>
-              <option value="all">Tümü</option>
+              <option value="all">Tumu</option>
               {options.categories.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
@@ -157,10 +176,27 @@ export function EventsPage() {
         </div>
       </details>
 
-      {filteredEvents.length ? (
-        <SectionCard title={`${filteredEvents.length} Etkinlik`}>
+      <div className="timeline-switcher" role="tablist" aria-label="Etkinlik zaman filtresi">
+        <button
+          type="button"
+          className={activeTimeline === "upcoming" ? "is-active" : ""}
+          onClick={() => setActiveTimeline("upcoming")}
+        >
+          Yaklaşan Etkinlikler <span>{timelineEvents.upcoming.length}</span>
+        </button>
+        <button
+          type="button"
+          className={activeTimeline === "past" ? "is-active" : ""}
+          onClick={() => setActiveTimeline("past")}
+        >
+          Geçmiş Etkinlikler <span>{timelineEvents.past.length}</span>
+        </button>
+      </div>
+
+      {visibleEvents.length ? (
+        <SectionCard title={activeTimeline === "upcoming" ? `${visibleEvents.length} Yaklaşan Etkinlik` : `${visibleEvents.length} Geçmiş Etkinlik`}>
           <div className="event-grid featured-grid">
-            {filteredEvents.map((item) => (
+            {visibleEvents.map((item) => (
               <EventCard
                 key={item.id || `${item.title}-${item.startDate}`}
                 event={item}
@@ -168,7 +204,7 @@ export function EventsPage() {
                   canManageEvent(item) ? (
                     <div className="inline-actions">
                       <Link className="ghost-button link-button" to={`/events/${item.id}/edit`}>
-                        Düzenle
+                        Duzenle
                       </Link>
                       <button className="ghost-button" type="button" onClick={() => handleDelete(item.id)}>
                         Sil
@@ -181,7 +217,7 @@ export function EventsPage() {
           </div>
         </SectionCard>
       ) : (
-        <EmptyState title="Etkinlik bulunamadı." description="Filtreleri gevşeterek daha geniş bir listeye dönebilirsiniz." icon="Et" />
+        <EmptyState title="Etkinlik bulunamadi." description="Diger zaman kutucuguna gecebilir veya filtreleri gevsetebilirsiniz." icon="Et" />
       )}
     </div>
   );

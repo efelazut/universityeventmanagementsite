@@ -85,7 +85,7 @@ export function Layout({ children }) {
                 <img src={campusBrandImage} alt="" />
               </span>
               <div>
-                <strong>Maltepe Etkinlik</strong>
+                <strong>UniConnect</strong>
               </div>
             </Link>
 
