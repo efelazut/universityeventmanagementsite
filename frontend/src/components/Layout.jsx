@@ -7,9 +7,6 @@ import { fetchClubs } from "../services/resourceService";
 import { MessageDrawer } from "./MessageDrawer";
 import { NotificationPanel } from "./NotificationPanel";
 
-const campusBrandImage =
-  "https://commons.wikimedia.org/wiki/Special:FilePath/Open_area_outside_of_Maltepe_University%2C_Istanbul_01.JPG";
-
 function getRoleLabel(role) {
   if (role === "Admin") return "Yönetici";
   if (role === "ClubManager") return "Kulüp Yöneticisi";
@@ -87,12 +84,8 @@ export function Layout({ children }) {
         <div className="navbar-container">
           <div className="navbar-left">
             <Link to="/home" className="brand brand-header">
-              <span className="brand-mark brand-photo" aria-hidden="true">
-                <img src={campusBrandImage} alt="" />
-              </span>
-              <div>
-                <strong>UniConnect</strong>
-              </div>
+              <img className="brand-logo" src="/logo.png" alt="UniConnect" />
+              <strong>UniConnect</strong>
             </Link>
 
             <button
