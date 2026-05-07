@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #ffffff;
   --bg-soft: #f8f9fa;
   --surface: #ffffff;
@@ -1782,6 +1782,10 @@ p {
 
 .rating-stars-track .is-filled {
   color: #d4a926;
+}
+
+.rating-stars-track .is-empty {
+  color: rgba(198, 168, 107, 0.38);
 }
 
 .rating-stars strong {
