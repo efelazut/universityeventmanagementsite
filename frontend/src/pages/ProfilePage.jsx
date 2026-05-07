@@ -5,7 +5,7 @@ import { SectionCard } from "../components/SectionCard";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { fetchMyEvents, fetchMyProfile, updateMyProfile } from "../services/resourceService";
+import { fetchMyEvents, fetchMyProfile, updateMyAcademicInfo, updateMyPassword, updateMyProfile } from "../services/resourceService";
 
 function roleLabel(role) {
   if (role === "Admin") return "Yönetici";
@@ -48,14 +48,30 @@ export function ProfilePage() {
   const profileQuery = useAsyncData(() => fetchMyProfile(user.token, apiBaseUrl), [user?.token, apiBaseUrl]);
   const eventsQuery = useAsyncData(() => fetchMyEvents(user.token, apiBaseUrl), [user?.token, apiBaseUrl]);
   const [emailForm, setEmailForm] = useState("");
+  const [academicForm, setAcademicForm] = useState({ faculty: "", department: "", yearClass: "" });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
   const [profileFeedback, setProfileFeedback] = useState(null);
+  const [academicFeedback, setAcademicFeedback] = useState(null);
+  const [passwordFeedback, setPasswordFeedback] = useState(null);
   const [savingEmail, setSavingEmail] = useState(false);
+  const [savingAcademic, setSavingAcademic] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     if (profileQuery.data?.email) {
       setEmailForm(profileQuery.data.email);
     }
   }, [profileQuery.data?.email]);
+
+  useEffect(() => {
+    if (profileQuery.data) {
+      setAcademicForm({
+        faculty: profileQuery.data.faculty || "",
+        department: profileQuery.data.department || "",
+        yearClass: profileQuery.data.yearClass || ""
+      });
+    }
+  }, [profileQuery.data]);
 
   if (profileQuery.loading || eventsQuery.loading) {
     return <div className="loading-state loading-state-large">Profil verileri hazırlanıyor...</div>;
@@ -87,6 +103,61 @@ export function ProfilePage() {
       setProfileFeedback({ type: "error", text: err.message || "E-posta güncellenemedi." });
     } finally {
       setSavingEmail(false);
+    }
+  };
+
+  const handleAcademicUpdate = async (event) => {
+    event.preventDefault();
+    setAcademicFeedback(null);
+    setSavingAcademic(true);
+
+    try {
+      await updateMyAcademicInfo(
+        {
+          faculty: academicForm.faculty.trim(),
+          department: academicForm.department.trim(),
+          yearClass: academicForm.yearClass.trim()
+        },
+        user.token,
+        apiBaseUrl
+      );
+      setAcademicFeedback({ type: "success", text: "Akademik bilgileriniz güncellendi." });
+      await profileQuery.reload();
+    } catch (err) {
+      setAcademicFeedback({ type: "error", text: err.message || "Akademik bilgiler güncellenemedi." });
+    } finally {
+      setSavingAcademic(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (event) => {
+    event.preventDefault();
+    setPasswordFeedback(null);
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordFeedback({ type: "error", text: "Yeni şifre en az 6 karakter olmalıdır." });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      setPasswordFeedback({ type: "error", text: "Yeni şifreler eşleşmiyor." });
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordFeedback({ type: "error", text: "Yeni şifre mevcut şifreyle aynı olamaz." });
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await updateMyPassword(passwordForm, user.token, apiBaseUrl);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
+      setPasswordFeedback({ type: "success", text: "Şifreniz başarıyla güncellendi." });
+    } catch (err) {
+      setPasswordFeedback({ type: "error", text: err.message || "Şifre güncellenemedi." });
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -161,12 +232,90 @@ export function ProfilePage() {
         </SectionCard>
 
         <SectionCard title="Akademik bilgiler" description="Öğrenci veya yönetici hesabına ait akademik alanlar.">
-          <div className="detail-table">
-            <div><span>Fakülte</span><strong>{profile.faculty || "Belirtilmedi"}</strong></div>
-            <div><span>Bölüm</span><strong>{profile.department || "Belirtilmedi"}</strong></div>
-            <div><span>Öğrenci numarası</span><strong>{profile.studentNumber || "Belirtilmedi"}</strong></div>
-            <div><span>Sınıf / yıl</span><strong>{profile.yearClass || "Belirtilmedi"}</strong></div>
-          </div>
+          <form className="compact-form" onSubmit={handleAcademicUpdate}>
+            <label>
+              Fakülte
+              <input
+                type="text"
+                value={academicForm.faculty}
+                maxLength={150}
+                onChange={(event) => setAcademicForm({ ...academicForm, faculty: event.target.value })}
+                placeholder="Belirtilmedi"
+              />
+            </label>
+            <label>
+              Bölüm
+              <input
+                type="text"
+                value={academicForm.department}
+                maxLength={150}
+                onChange={(event) => setAcademicForm({ ...academicForm, department: event.target.value })}
+                placeholder="Belirtilmedi"
+              />
+            </label>
+            <label>
+              Öğrenci numarası
+              <input type="text" value={profile.studentNumber || "Belirtilmedi"} disabled />
+            </label>
+            <label>
+              Sınıf / yıl
+              <input
+                type="text"
+                value={academicForm.yearClass}
+                maxLength={50}
+                onChange={(event) => setAcademicForm({ ...academicForm, yearClass: event.target.value })}
+                placeholder="Belirtilmedi"
+              />
+            </label>
+            {academicFeedback ? (
+              <div className={academicFeedback.type === "success" ? "notice-box" : "error-text"}>{academicFeedback.text}</div>
+            ) : null}
+            <button className="primary-button" type="submit" disabled={savingAcademic}>
+              {savingAcademic ? "Güncelleniyor..." : "Akademik Bilgileri Güncelle"}
+            </button>
+          </form>
+        </SectionCard>
+
+        <SectionCard title="Şifre değiştir" description="Hesabınızı korumak için güçlü ve yalnızca size ait bir şifre kullanın.">
+          <form className="compact-form" onSubmit={handlePasswordUpdate}>
+            <label>
+              Mevcut şifre
+              <input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={(event) => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })}
+                autoComplete="current-password"
+              />
+            </label>
+            <label>
+              Yeni şifre
+              <input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })}
+                autoComplete="new-password"
+              />
+            </label>
+            <label>
+              Yeni şifre tekrar
+              <input
+                type="password"
+                value={passwordForm.confirmNewPassword}
+                onChange={(event) => setPasswordForm({ ...passwordForm, confirmNewPassword: event.target.value })}
+                autoComplete="new-password"
+              />
+            </label>
+            {passwordFeedback ? (
+              <div className={passwordFeedback.type === "success" ? "notice-box" : "error-text"}>{passwordFeedback.text}</div>
+            ) : null}
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={savingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword}
+            >
+              {savingPassword ? "Güncelleniyor..." : "Şifreyi Güncelle"}
+            </button>
+          </form>
         </SectionCard>
 
         <SectionCard title="Kulüp ilişkim" description="Sistemdeki kulüp bağınız ve yetki kapsamınız.">

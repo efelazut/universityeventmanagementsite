@@ -38,6 +38,26 @@ public class UsersController : ControllerBase
     }
 
     [Authorize]
+    [HttpPut("me/academic-info")]
+    public ActionResult<UserProfileResponse> UpdateCurrentUserAcademicInfo([FromBody] UpdateAcademicInfoRequest request)
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        return this.ToActionResult(_userService.UpdateCurrentUserAcademicInfo(currentUserId, email, request));
+    }
+
+    [Authorize]
+    [HttpPut("me/password")]
+    public IActionResult ChangeCurrentUserPassword([FromBody] UpdatePasswordRequest request)
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        return this.ToActionResult(_userService.ChangeCurrentUserPassword(currentUserId, email, request));
+    }
+
+    [Authorize]
     [HttpGet("me/events")]
     public ActionResult<UserEventActivityResponse> GetCurrentUserEvents()
     {

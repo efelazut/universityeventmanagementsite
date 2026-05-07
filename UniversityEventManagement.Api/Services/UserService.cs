@@ -223,6 +223,69 @@ public class UserService : IUserService
         return GetCurrentUser(user.Id, user.Email);
     }
 
+    public ServiceResult<UserProfileResponse> UpdateCurrentUserAcademicInfo(int? userId, string? email, UpdateAcademicInfoRequest request)
+    {
+        var user = ResolveCurrentUserForUpdate(userId, email);
+        if (user is null)
+        {
+            return ServiceResult<UserProfileResponse>.NotFound("Kullanıcı kaydı bulunamadı.");
+        }
+
+        var faculty = NormalizeOptionalText(request.Faculty, 150);
+        var department = NormalizeOptionalText(request.Department, 150);
+        var yearClass = NormalizeOptionalText(request.YearClass, 50);
+
+        if (!IsValidYearClass(yearClass))
+        {
+            return ServiceResult<UserProfileResponse>.BadRequest("Sınıf / yıl bilgisi çok uzun veya geçersiz görünüyor.");
+        }
+
+        user.Faculty = faculty;
+        user.Department = department;
+        user.YearClass = yearClass;
+        _dbContext.SaveChanges();
+
+        return GetCurrentUser(user.Id, user.Email);
+    }
+
+    public ServiceResult ChangeCurrentUserPassword(int? userId, string? email, UpdatePasswordRequest request)
+    {
+        var user = ResolveCurrentUserForUpdate(userId, email);
+        if (user is null)
+        {
+            return ServiceResult.NotFound("Kullanıcı kaydı bulunamadı.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return ServiceResult.BadRequest("Şifre alanları boş bırakılamaz.");
+        }
+
+        if (request.NewPassword.Length < 6)
+        {
+            return ServiceResult.BadRequest("Yeni şifre en az 6 karakter olmalıdır.");
+        }
+
+        if (request.NewPassword != request.ConfirmNewPassword)
+        {
+            return ServiceResult.BadRequest("Yeni şifreler eşleşmiyor.");
+        }
+
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            return ServiceResult.BadRequest("Yeni şifre mevcut şifreyle aynı olamaz.");
+        }
+
+        if (!VerifyPassword(user, request.CurrentPassword, out _))
+        {
+            return ServiceResult.BadRequest("Mevcut şifre doğru değil.");
+        }
+
+        user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
+        _dbContext.SaveChanges();
+        return ServiceResult.Ok();
+    }
+
     public ServiceResult<UserEventActivityResponse> GetCurrentUserEvents(int? userId, string? email)
     {
         var user = ResolveCurrentUser(userId, email);
@@ -389,6 +452,43 @@ public class UserService : IUserService
             return false;
         }
     }
+
+    private bool VerifyPassword(User user, string password, out bool shouldRehash)
+    {
+        shouldRehash = false;
+
+        try
+        {
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+            if (result == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                shouldRehash = true;
+                return true;
+            }
+
+            if (result == PasswordVerificationResult.Success)
+            {
+                return true;
+            }
+        }
+        catch (FormatException)
+        {
+            // Legacy seed data may still contain plain text until the user signs in.
+        }
+
+        var matchesLegacyPlainText = user.PasswordHash == password;
+        shouldRehash = matchesLegacyPlainText;
+        return matchesLegacyPlainText;
+    }
+
+    private static string NormalizeOptionalText(string? value, int maxLength)
+    {
+        var normalized = Regex.Replace((value ?? string.Empty).Trim(), "\\s+", " ");
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static bool IsValidYearClass(string value) =>
+        value.Length <= 50 && !Regex.IsMatch(value, "[<>]");
 
     private static UserResponse Map(User user) => new()
     {
