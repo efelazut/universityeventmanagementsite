@@ -12,14 +12,17 @@ function buildUrl(baseUrl, path) {
 }
 
 export function getFriendlyApiError(error) {
-  const message = String(error?.message || error || "").toLowerCase();
+  const rawMessage = String(error?.message || error || "");
+  const message = rawMessage.toLowerCase();
 
   if (message.includes("failed to fetch") || message.includes("networkerror") || message.includes("load failed")) {
     return "Sunucuya ulaşılamıyor. API çalışıyor mu ve adres doğru mu kontrol edin.";
   }
 
   if (message.includes("401") || message.includes("unauthorized")) {
-    return "Bu işlem için oturum açmanız gerekiyor.";
+    return rawMessage && !message.includes("request failed") && !message.includes("unauthorized")
+      ? rawMessage
+      : "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.";
   }
 
   if (message.includes("403") || message.includes("forbidden")) {
@@ -34,7 +37,7 @@ export function getFriendlyApiError(error) {
     return "Sunucuda beklenmeyen bir hata oluştu. Biraz sonra tekrar deneyin.";
   }
 
-  return error?.message || "İşlem tamamlanamadı. Lütfen tekrar deneyin.";
+  return rawMessage || "İşlem tamamlanamadı. Lütfen tekrar deneyin.";
 }
 
 async function sendRequest(url, { method, body, token }) {

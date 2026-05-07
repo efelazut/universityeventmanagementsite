@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UniversityEventManagement.Api.DTOs;
@@ -22,8 +23,7 @@ public class UsersController : ControllerBase
     public ActionResult<UserProfileResponse> GetCurrentUser()
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        var currentUserId = GetCurrentUserId();
         return this.ToActionResult(_userService.GetCurrentUser(currentUserId, email));
     }
 
@@ -32,8 +32,7 @@ public class UsersController : ControllerBase
     public ActionResult<UserProfileResponse> UpdateCurrentUser([FromBody] UpdateCurrentUserRequest request)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        var currentUserId = GetCurrentUserId();
         return this.ToActionResult(_userService.UpdateCurrentUser(currentUserId, email, request));
     }
 
@@ -42,8 +41,7 @@ public class UsersController : ControllerBase
     public ActionResult<UserProfileResponse> UpdateCurrentUserAcademicInfo([FromBody] UpdateAcademicInfoRequest request)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        var currentUserId = GetCurrentUserId();
         return this.ToActionResult(_userService.UpdateCurrentUserAcademicInfo(currentUserId, email, request));
     }
 
@@ -52,8 +50,7 @@ public class UsersController : ControllerBase
     public IActionResult ChangeCurrentUserPassword([FromBody] UpdatePasswordRequest request)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        var currentUserId = GetCurrentUserId();
         return this.ToActionResult(_userService.ChangeCurrentUserPassword(currentUserId, email, request));
     }
 
@@ -62,9 +59,17 @@ public class UsersController : ControllerBase
     public ActionResult<UserEventActivityResponse> GetCurrentUserEvents()
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserId = int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : (int?)null;
+        var currentUserId = GetCurrentUserId();
         return this.ToActionResult(_userService.GetCurrentUserEvents(currentUserId, email));
+    }
+
+    private int? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue("sub");
+
+        return int.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : null;
     }
 
     [HttpGet("{id:int}/organizer-profile")]

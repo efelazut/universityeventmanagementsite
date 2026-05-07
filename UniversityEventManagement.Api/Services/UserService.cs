@@ -250,10 +250,15 @@ public class UserService : IUserService
 
     public ServiceResult ChangeCurrentUserPassword(int? userId, string? email, UpdatePasswordRequest request)
     {
+        if (!userId.HasValue && string.IsNullOrWhiteSpace(email))
+        {
+            return ServiceResult.Unauthorized("Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.");
+        }
+
         var user = ResolveCurrentUserForUpdate(userId, email);
         if (user is null)
         {
-            return ServiceResult.NotFound("Kullanıcı kaydı bulunamadı.");
+            return ServiceResult.BadRequest("Kullanıcı bilgileri alınamadı.");
         }
 
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
@@ -278,7 +283,7 @@ public class UserService : IUserService
 
         if (!VerifyPassword(user, request.CurrentPassword, out _))
         {
-            return ServiceResult.BadRequest("Mevcut şifre doğru değil.");
+            return ServiceResult.BadRequest("Mevcut şifre yanlış.");
         }
 
         user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
@@ -460,25 +465,13 @@ public class UserService : IUserService
         try
         {
             var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
-            if (result == PasswordVerificationResult.SuccessRehashNeeded)
-            {
-                shouldRehash = true;
-                return true;
-            }
-
-            if (result == PasswordVerificationResult.Success)
-            {
-                return true;
-            }
+            shouldRehash = result == PasswordVerificationResult.SuccessRehashNeeded;
+            return result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
         }
         catch (FormatException)
         {
-            // Legacy seed data may still contain plain text until the user signs in.
+            return false;
         }
-
-        var matchesLegacyPlainText = user.PasswordHash == password;
-        shouldRehash = matchesLegacyPlainText;
-        return matchesLegacyPlainText;
     }
 
     private static string NormalizeOptionalText(string? value, int maxLength)
