@@ -193,7 +193,7 @@ public class RoomService : IRoomService
             return ServiceResult<RoomDayAvailabilityResponse>.NotFound("Salon bulunamadı.");
         }
 
-        var dayStart = date.Date;
+        var dayStart = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
         var dayEnd = dayStart.AddDays(1);
         var events = _dbContext.Events
             .AsNoTracking()

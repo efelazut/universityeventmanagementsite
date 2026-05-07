@@ -41,6 +41,10 @@ function normalizeSlots(data) {
   return Array.isArray(data?.slots) ? data.slots.filter((slot) => slot?.startTime && slot?.endTime) : [];
 }
 
+function isEmptyDay(slots) {
+  return slots.length === 0 || slots.every((slot) => slot.isAvailable);
+}
+
 export function RoomsPage() {
   const { apiBaseUrl, user } = useAuth();
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -59,6 +63,7 @@ export function RoomsPage() {
   const selectedRoomAvailability = dayAvailabilityQuery.data && typeof dayAvailabilityQuery.data === "object"
     ? dayAvailabilityQuery.data
     : null;
+  const hasPlannedEvents = selectedRoomAvailability && !isEmptyDay(slotList);
 
   useEffect(() => {
     if (!rooms.length) {
@@ -161,11 +166,15 @@ export function RoomsPage() {
                 {dayAvailabilityQuery.loading ? (
                   <div className="loading-state">Saat blokları hazırlanıyor...</div>
                 ) : dayAvailabilityQuery.error ? (
-                  <div className="subtle-error-text">Salon programı şu anda alınamadı.</div>
-                ) : slotList.length ? (
+                  <div className="room-empty-card room-empty-card-error">
+                    <strong>Salon bilgileri şu anda yüklenemedi.</strong>
+                    <span>Lütfen kısa bir süre sonra tekrar deneyin.</span>
+                    <button className="ghost-button" type="button" onClick={dayAvailabilityQuery.reload}>Tekrar Dene</button>
+                  </div>
+                ) : hasPlannedEvents ? (
                   <>
                     <div className="room-slot-grid room-slot-grid-modern">
-                      {slotList.map((slot) => (
+                      {slotList.filter((slot) => !slot.isAvailable).map((slot) => (
                         <div key={`${slot.startTime}-${slot.endTime}`} className={`room-slot ${slot.isAvailable ? "is-free" : "is-busy"}`}>
                           <strong>{formatSlotLabel(slot)}</strong>
                           <span>{slot.label || (slot.isAvailable ? "Uygun" : "Dolu")}</span>
@@ -178,7 +187,10 @@ export function RoomsPage() {
                     ) : null}
                   </>
                 ) : (
-                  <EmptyState title="Bu gün için planlanmış etkinlik yok." icon="Sl" />
+                  <div className="room-empty-card">
+                    <strong>Bu gün için planlanmış etkinlik yok.</strong>
+                    <span>Seçili salon bu tarihte boş görünüyor.</span>
+                  </div>
                 )}
               </>
             ) : (

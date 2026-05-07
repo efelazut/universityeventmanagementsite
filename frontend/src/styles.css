@@ -6772,6 +6772,35 @@ textarea:focus {
   padding: 8px 0;
 }
 
+.room-empty-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 18px;
+  color: #3a2148;
+  background: linear-gradient(135deg, rgba(251, 247, 255, 0.96), rgba(239, 229, 248, 0.92));
+  border: 1px solid rgba(117, 69, 139, 0.16);
+}
+
+.room-empty-card strong {
+  font-size: 17px;
+}
+
+.room-empty-card span {
+  color: #765c86;
+  font-weight: 700;
+}
+
+.room-empty-card-error {
+  background: rgba(255, 249, 251, 0.96);
+  border-color: rgba(190, 72, 105, 0.18);
+}
+
+.room-empty-card-error .ghost-button {
+  width: fit-content;
+  margin-top: 4px;
+}
+
 /* Mobile event cards keep media visible and actions compact */
 @media (max-width: 768px) {
   .event-card {
