@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { fetchClubs } from "../services/resourceService";
+import { fetchClubs, fetchMyProfile } from "../services/resourceService";
 import { MessageDrawer } from "./MessageDrawer";
 import { NotificationPanel } from "./NotificationPanel";
 
@@ -18,6 +18,10 @@ export function Layout({ children }) {
   const { user, logout, apiBaseUrl, setApiBaseUrl } = useAuth();
   const { unreadMessageCount, unreadNotificationCount, openMessages, openNotifications } = useCommunicationCenter();
   const clubsQuery = useAsyncData(() => fetchClubs(apiBaseUrl), [apiBaseUrl]);
+  const profileQuery = useAsyncData(
+    () => (user?.token ? fetchMyProfile(user.token, apiBaseUrl) : Promise.resolve(null)),
+    [user?.token, apiBaseUrl]
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -35,6 +39,25 @@ export function Layout({ children }) {
   );
 
   const clubs = Array.isArray(clubsQuery.data) ? clubsQuery.data : [];
+  const managedClubs = useMemo(() => {
+    const fromProfile = Array.isArray(profileQuery.data?.managedClubs) ? profileQuery.data.managedClubs : [];
+    if (fromProfile.length) return fromProfile;
+
+    const fromAuth = Array.isArray(user?.managedClubs) ? user.managedClubs : [];
+    if (fromAuth.length) return fromAuth;
+
+    if (user?.clubId && user.role === "ClubManager") {
+      const club = clubs.find((item) => item.id === user.clubId);
+      return [{ clubId: user.clubId, clubName: club?.name || "Kulübüm", role: "Manager" }];
+    }
+
+    return [];
+  }, [clubs, profileQuery.data?.managedClubs, user?.clubId, user?.managedClubs, user?.role]);
+
+  const openMyClub = () => {
+    setMenuOpen(false);
+    navigate(managedClubs.length === 1 ? `/clubs/${managedClubs[0].clubId}` : "/clubs");
+  };
 
   useEffect(() => {
     if (!menuOpen) {
@@ -161,8 +184,18 @@ export function Layout({ children }) {
                           navigate("/profile");
                         }}
                       >
-                        Profili Aç
+                        Profilim
                       </button>
+                      {managedClubs.length ? (
+                        <button
+                          className="profile-menu-item"
+                          type="button"
+                          role="menuitem"
+                          onClick={openMyClub}
+                        >
+                          Kulübüm
+                        </button>
+                      ) : null}
                       <button
                         className="profile-menu-item"
                         type="button"
@@ -195,3 +228,4 @@ export function Layout({ children }) {
     </div>
   );
 }
+

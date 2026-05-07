@@ -5,6 +5,7 @@ export function ClubManagementSection({
   managers,
   users,
   canManage,
+  currentUserId,
   modalOpen,
   loading,
   onOpenModal,
@@ -27,7 +28,7 @@ export function ClubManagementSection({
           <ManagerCard
             key={manager.id}
             manager={manager}
-            canRemove={canManage && manager.role !== "President"}
+            canRemove={canManage && manager.role !== "President" && manager.userId !== currentUserId}
             onRemove={onRemove}
           />
         ))}

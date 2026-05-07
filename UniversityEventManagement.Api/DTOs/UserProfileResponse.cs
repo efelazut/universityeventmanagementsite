@@ -15,4 +15,5 @@ public class UserProfileResponse : IEntityResponse
     public bool IsActiveMember { get; set; }
     public int? ClubId { get; set; }
     public string? ClubName { get; set; }
+    public IReadOnlyList<ManagedClubSummaryResponse> ManagedClubs { get; set; } = [];
 }

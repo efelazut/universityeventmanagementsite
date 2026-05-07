@@ -54,6 +54,7 @@ export function AuthProvider({ children }) {
             name: auth.name || auth.fullName,
             role: auth.role,
             clubId: auth.clubId ?? null,
+            managedClubs: Array.isArray(auth.managedClubs) ? auth.managedClubs : [],
             token: auth.token
           }
         : null,

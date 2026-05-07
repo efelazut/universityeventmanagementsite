@@ -77,6 +77,8 @@ public class AuthService : IAuthService
         var normalizedEmail = request.Email.Trim();
         var user = _dbContext.Users
             .AsNoTracking()
+            .Include(existingUser => existingUser.ManagedClubs)
+                .ThenInclude(manager => manager.Club)
             .FirstOrDefault(existingUser =>
                 existingUser.Email.ToLower() == normalizedEmail.ToLower() &&
                 existingUser.PasswordHash == request.Password);
@@ -93,10 +95,23 @@ public class AuthService : IAuthService
             Name = user.FullName,
             FullName = user.FullName,
             Role = user.Role,
-            ClubId = user.ClubId,
+            ClubId = user.ClubId ?? user.ManagedClubs.OrderBy(manager => manager.Role == "President" ? 0 : 1).Select(manager => (int?)manager.ClubId).FirstOrDefault(),
+            ManagedClubs = MapManagedClubs(user),
             Message = "Login successful"
         });
     }
+
+    private static IReadOnlyList<ManagedClubSummaryResponse> MapManagedClubs(User user) => user.ManagedClubs
+        .Where(manager => manager.Club is not null)
+        .OrderBy(manager => manager.Role == "President" ? 0 : 1)
+        .ThenBy(manager => manager.Club!.Name)
+        .Select(manager => new ManagedClubSummaryResponse
+        {
+            ClubId = manager.ClubId,
+            ClubName = manager.Club!.Name,
+            Role = manager.Role
+        })
+        .ToList();
 
     private string GenerateToken(User user)
     {

@@ -161,7 +161,7 @@ export function RoomsPage() {
                 {dayAvailabilityQuery.loading ? (
                   <div className="loading-state">Saat blokları hazırlanıyor...</div>
                 ) : dayAvailabilityQuery.error ? (
-                  <div className="notice-box">Seçili gün için salon programı yüklenemedi.</div>
+                  <div className="subtle-error-text">Salon programı şu anda alınamadı.</div>
                 ) : slotList.length ? (
                   <>
                     <div className="room-slot-grid room-slot-grid-modern">
@@ -178,7 +178,7 @@ export function RoomsPage() {
                     ) : null}
                   </>
                 ) : (
-                  <EmptyState title="Saat bloğu bulunamadı." icon="Sl" />
+                  <EmptyState title="Bu gün için planlanmış etkinlik yok." icon="Sl" />
                 )}
               </>
             ) : (

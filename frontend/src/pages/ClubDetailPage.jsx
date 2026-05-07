@@ -76,7 +76,7 @@ export function ClubDetailPage() {
   const statsData = stats.data || { eventCount: 0, totalRegistrations: 0 };
   const userList = Array.isArray(users.data) ? users.data : [];
   const currentManager = managerList.find((manager) => manager.userId === user?.id);
-  const canManageTeam = Boolean(user && (user.role === "Admin" || currentManager?.role === "President"));
+  const canManageTeam = Boolean(user && (user.role === "Admin" || ["President", "Manager"].includes(currentManager?.role)));
   const canDeleteClub = Boolean(user && (user.role === "Admin" || currentManager?.role === "President"));
   const optionalError = [managers.error, events.error, stats.error, followStatus.error]
     .filter((error) => error && !isOptionalAuthError(error))
@@ -212,6 +212,7 @@ export function ClubDetailPage() {
         managers={managerList}
         users={userList}
         canManage={canManageTeam}
+        currentUserId={user?.id}
         modalOpen={managerModalOpen}
         loading={busyAction === "manager"}
         onOpenModal={() => setManagerModalOpen(true)}

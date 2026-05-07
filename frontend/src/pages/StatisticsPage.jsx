@@ -20,14 +20,6 @@ function toPieData(record = {}) {
   return Object.entries(record).map(([name, value]) => ({ name, value }));
 }
 
-function translateImportWarning(value = "") {
-  return String(value)
-    .replace("Invalid calendar date", "Geçersiz tarih")
-    .replace("Unknown date format", "Tarih biçimi tanınmadı")
-    .replace("row", "satır")
-    .replace("satır", "satır");
-}
-
 export function StatisticsPage() {
   const { apiBaseUrl, user } = useAuth();
   const isManagement = ["Admin", "ClubManager"].includes(user.role);
@@ -195,15 +187,7 @@ export function StatisticsPage() {
             <div className="insight-card"><strong>{importStatus.data.totalClubs}</strong><span>Kulüp</span></div>
             <div className="insight-card"><strong>{importStatus.data.totalEvents}</strong><span>Etkinlik</span></div>
             <div className="insight-card"><strong>{importStatus.data.totalRooms}</strong><span>Salon</span></div>
-            <div className="insight-card"><strong>{importStatus.data.warningCount}</strong><span>Uyarı</span></div>
           </div>
-          {importStatus.data.warnings?.length ? (
-            <div className="stack-list">
-              {importStatus.data.warnings.slice(0, 4).map((warning) => (
-                <div key={warning} className="list-row"><span>{translateImportWarning(warning)}</span></div>
-              ))}
-            </div>
-          ) : null}
         </SectionCard>
       ) : null}
 

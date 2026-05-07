@@ -149,7 +149,16 @@ public class UserService : IUserService
             Role = user.Role,
             IsActiveMember = user.IsActiveMember,
             ClubId = user.ClubId,
-            ClubName = user.Club?.Name
+            ClubName = user.Club?.Name,
+            ManagedClubs = user.ManagedClubs
+                .Where(manager => manager.Club is not null)
+                .Select(manager => new ManagedClubSummaryResponse
+                {
+                    ClubId = manager.ClubId,
+                    ClubName = manager.Club!.Name,
+                    Role = manager.Role
+                })
+                .ToList()
         });
     }
 
@@ -258,7 +267,12 @@ public class UserService : IUserService
     {
         if (userId.HasValue)
         {
-            var byId = _dbContext.Users.AsNoTracking().Include(item => item.Club).FirstOrDefault(item => item.Id == userId.Value);
+            var byId = _dbContext.Users
+                .AsNoTracking()
+                .Include(item => item.Club)
+                .Include(item => item.ManagedClubs)
+                    .ThenInclude(manager => manager.Club)
+                .FirstOrDefault(item => item.Id == userId.Value);
             if (byId is not null)
             {
                 return byId;
@@ -270,6 +284,8 @@ public class UserService : IUserService
             return _dbContext.Users
                 .AsNoTracking()
                 .Include(item => item.Club)
+                .Include(item => item.ManagedClubs)
+                    .ThenInclude(manager => manager.Club)
                 .FirstOrDefault(item => item.Email.ToLower() == email.Trim().ToLower());
         }
 

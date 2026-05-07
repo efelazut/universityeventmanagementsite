@@ -8,5 +8,6 @@ public class AuthResponse
     public string FullName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public int? ClubId { get; set; }
+    public IReadOnlyList<ManagedClubSummaryResponse> ManagedClubs { get; set; } = [];
     public string Message { get; set; } = string.Empty;
 }

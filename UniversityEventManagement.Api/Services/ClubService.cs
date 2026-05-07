@@ -361,6 +361,11 @@ public class ClubService : IClubService
             return ServiceResult.Forbidden("Baskan bu islemle silinemez.");
         }
 
+        if (manager.UserId == currentUserId)
+        {
+            return ServiceResult.Forbidden("Kendi yonetici kaydinizi kaldiramazsiniz.");
+        }
+
         var user = manager.User;
         _dbContext.ClubManagers.Remove(manager);
 
@@ -382,7 +387,7 @@ public class ClubService : IClubService
         }
 
         return string.Equals(currentUserRole, UserRoles.ClubManager, StringComparison.OrdinalIgnoreCase)
-            && _dbContext.ClubManagers.Any(item => item.ClubId == clubId && item.UserId == currentUserId && item.Role == "President");
+            && _dbContext.ClubManagers.Any(item => item.ClubId == clubId && item.UserId == currentUserId);
     }
 
     private bool CanDeleteClub(int clubId, int currentUserId, string currentUserRole)
