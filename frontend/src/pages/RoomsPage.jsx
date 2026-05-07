@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
-import { SectionCard } from "../components/SectionCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { fetchRoomAvailability, fetchRoomDayAvailability, fetchRooms } from "../services/resourceService";
@@ -60,6 +59,7 @@ export function RoomsPage() {
   const selectedRoomAvailability = dayAvailabilityQuery.data && typeof dayAvailabilityQuery.data === "object"
     ? dayAvailabilityQuery.data
     : null;
+
   useEffect(() => {
     if (!rooms.length) {
       setSelectedRoomId(null);
@@ -101,117 +101,94 @@ export function RoomsPage() {
   }
 
   return (
-    <div className="page-stack">
-      {user?.role === "Admin" ? (
-        <div className="page-actions-row">
+    <div className="page-stack rooms-page-stack">
+      <section className="rooms-modern-hero">
+        <div>
+          <p className="eyebrow">Salonlar</p>
+          <h1>Salon Uygunluğu</h1>
+        </div>
+        {user?.role === "Admin" ? (
           <Link className="primary-button link-button" to="/rooms/new">
             Yeni Salon
           </Link>
-        </div>
-      ) : null}
+        ) : null}
+      </section>
 
-      <SectionCard title="Salonlar">
-        {rooms.length ? (
-          <div className="room-card-grid">
-            {rooms.map((room) => {
-              const roomStatus = availabilityMap[room.id];
-
-              return (
-                <button
-                  key={room.id}
-                  type="button"
-                  className={`room-summary-card ${selectedRoomId === room.id ? "is-active" : ""}`}
-                  onClick={() => setSelectedRoomId(room.id)}
-                >
-                  <div className="room-summary-head">
-                    <div>
-                      <strong>{room.name}</strong>
-                      <span>{room.building || "Kampüs alanı"}</span>
-                    </div>
-                    <span className={`pill ${getSummaryTone(roomStatus?.label)}`}>{room.type || "Salon"}</span>
-                  </div>
-
-                  <p>{room.description || "Bu salon için kısa açıklama daha sonra güncellenecek."}</p>
-
-                  <div className="room-summary-meta">
-                    <div>
-                      <span>Kapasite</span>
-                      <strong>{room.capacity || 0}</strong>
-                    </div>
-                    <div>
-                      <span>Bugün</span>
-                      <strong>{roomStatus?.label || "Bugün özet yok"}</strong>
-                    </div>
-                  </div>
-
-                  {roomStatus?.nextOccupiedStartDate ? (
-                    <small>
-                      Sıradaki rezervasyon:{" "}
-                      {new Date(roomStatus.nextOccupiedStartDate).toLocaleString("tr-TR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </small>
-                  ) : (
-                    <small>Bugün için yeni rezervasyonlara açık görünüyor.</small>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState title="Henüz salon tanımı bulunmuyor." description="Yeni salon eklendiğinde planlama kartları burada görünür." />
-        )}
-      </SectionCard>
-
-      <SectionCard title="Uygunluk Paneli">
-        {selectedRoom ? (
-          <div className="room-availability-panel">
-            <div className="room-availability-top">
-              <div>
-                <strong>{selectedRoom.name}</strong>
-                <span>{selectedRoom.building || "Kampüs"} • {selectedRoom.type || "Salon"}</span>
-              </div>
-              <label className="availability-date-picker">
-                Gün seçin
+      {rooms.length ? (
+        <div className="rooms-workspace">
+          <aside className="rooms-picker-panel">
+            <div className="rooms-picker-head">
+              <strong>{rooms.length} Salon</strong>
+              <label>
+                Gün
                 <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
               </label>
             </div>
 
-            {dayAvailabilityQuery.loading ? (
-              <div className="loading-state">Saat blokları hazırlanıyor...</div>
-            ) : dayAvailabilityQuery.error ? (
-              <div className="notice-box">
-                Seçili gün için salon programı yüklenemedi. Başka bir tarih seçebilir veya biraz sonra tekrar deneyebilirsiniz.
-              </div>
-            ) : slotList.length ? (
-              <>
-                <div className="room-slot-grid">
-                  {slotList.map((slot) => (
-                    <div key={`${slot.startTime}-${slot.endTime}`} className={`room-slot ${slot.isAvailable ? "is-free" : "is-busy"}`}>
-                      <strong>{formatSlotLabel(slot)}</strong>
-                      <span>{slot.label || (slot.isAvailable ? "Uygun" : "Dolu")}</span>
+            <div className="rooms-picker-list">
+              {rooms.map((room) => {
+                const roomStatus = availabilityMap[room.id];
+
+                return (
+                  <button
+                    key={room.id}
+                    type="button"
+                    className={`room-picker-card ${selectedRoomId === room.id ? "is-active" : ""}`}
+                    onClick={() => setSelectedRoomId(room.id)}
+                  >
+                    <div>
+                      <strong>{room.name}</strong>
+                      <span>{room.building || "Kampüs"} • {room.capacity || 0} kişi</span>
                     </div>
-                  ))}
+                    <span className={`pill ${getSummaryTone(roomStatus?.label)}`}>{roomStatus?.label || room.type || "Salon"}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          <section className="rooms-detail-panel">
+            {selectedRoom ? (
+              <>
+                <div className="rooms-detail-head">
+                  <div>
+                    <span>{selectedRoom.building || "Kampüs"} • {selectedRoom.type || "Salon"}</span>
+                    <h2>{selectedRoom.name}</h2>
+                  </div>
+                  <strong>{selectedRoom.capacity || 0} kişi</strong>
                 </div>
 
-                {selectedRoomAvailability && !selectedRoomAvailability.hasAvailability ? (
-                  <div className="notice-box">Bu tarih için uygun zaman aralığı bulunmuyor.</div>
-                ) : null}
+                {dayAvailabilityQuery.loading ? (
+                  <div className="loading-state">Saat blokları hazırlanıyor...</div>
+                ) : dayAvailabilityQuery.error ? (
+                  <div className="notice-box">Seçili gün için salon programı yüklenemedi.</div>
+                ) : slotList.length ? (
+                  <>
+                    <div className="room-slot-grid room-slot-grid-modern">
+                      {slotList.map((slot) => (
+                        <div key={`${slot.startTime}-${slot.endTime}`} className={`room-slot ${slot.isAvailable ? "is-free" : "is-busy"}`}>
+                          <strong>{formatSlotLabel(slot)}</strong>
+                          <span>{slot.label || (slot.isAvailable ? "Uygun" : "Dolu")}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {selectedRoomAvailability && !selectedRoomAvailability.hasAvailability ? (
+                      <div className="notice-box">Bu tarih için uygun zaman aralığı bulunmuyor.</div>
+                    ) : null}
+                  </>
+                ) : (
+                  <EmptyState title="Saat bloğu bulunamadı." icon="Sl" />
+                )}
               </>
             ) : (
-              <EmptyState
-                title="Seçili tarih için saat bloğu bulunamadı."
-                description="Başka bir tarih deneyebilir veya salon kartlarından farklı bir alan seçebilirsiniz."
-              />
+              <EmptyState title="Bir salon seçin." icon="Sl" />
             )}
-          </div>
-        ) : (
-          <EmptyState title="Bir salon seçin." description="Yukarıdaki kartlardan birine tıkladığınızda uygunluk paneli burada açılır." />
-        )}
-      </SectionCard>
+          </section>
+        </div>
+      ) : (
+        <EmptyState title="Henüz salon tanımı bulunmuyor." icon="Sl" />
+      )}
     </div>
   );
 }

@@ -242,10 +242,10 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(statistic => statistic.FacultyDistributionJson)
-                .HasColumnType("nvarchar(max)");
+                .IsRequired();
 
             entity.Property(statistic => statistic.DepartmentDistributionJson)
-                .HasColumnType("nvarchar(max)");
+                .IsRequired();
 
             entity.HasIndex(statistic => new { statistic.ClubId, statistic.AcademicYear })
                 .IsUnique();
@@ -265,7 +265,7 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(run => run.WarningSummaryJson)
-                .HasColumnType("nvarchar(max)");
+                .IsRequired();
         });
 
         modelBuilder.Entity<Registration>(entity =>

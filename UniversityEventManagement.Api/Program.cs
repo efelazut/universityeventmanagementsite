@@ -77,8 +77,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString, sqlServerOptions =>
-        sqlServerOptions.EnableRetryOnFailure())
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+        npgsqlOptions.EnableRetryOnFailure())
         .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClubService, ClubService>();
