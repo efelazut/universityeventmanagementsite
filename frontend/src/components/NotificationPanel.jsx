@@ -1,4 +1,4 @@
-import { useCommunicationCenter } from "../context/CommunicationCenterContext";
+﻿import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 
 export function NotificationPanel() {
   const { notifications, isNotificationPanelOpen, closeNotifications, markNotification, openMessages } = useCommunicationCenter();

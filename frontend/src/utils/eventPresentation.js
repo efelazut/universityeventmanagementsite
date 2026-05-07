@@ -1,4 +1,4 @@
-export function getEventVisualState(event) {
+﻿export function getEventVisualState(event) {
   const state = event.computedStatus || event.status;
 
   if (state === "Cancelled") {

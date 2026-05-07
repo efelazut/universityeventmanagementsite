@@ -1,4 +1,4 @@
-namespace UniversityEventManagement.Api.DTOs;
+﻿namespace UniversityEventManagement.Api.DTOs;
 
 public class UserResponse : IEntityResponse
 {
@@ -15,4 +15,5 @@ public class UserResponse : IEntityResponse
     public string Bio { get; set; } = string.Empty;
     public bool IsActiveMember { get; set; }
     public int? ClubId { get; set; }
+    public IReadOnlyList<ManagedClubSummaryResponse> ManagedClubs { get; set; } = [];
 }

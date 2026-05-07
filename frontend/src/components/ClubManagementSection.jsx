@@ -1,4 +1,4 @@
-import { AddManagerModal } from "./AddManagerModal";
+﻿import { AddManagerModal } from "./AddManagerModal";
 import { ManagerCard } from "./ManagerCard";
 
 export function ClubManagementSection({

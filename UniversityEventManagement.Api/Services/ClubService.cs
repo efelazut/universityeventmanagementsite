@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
@@ -247,7 +247,7 @@ public class ClubService : IClubService
     {
         if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
@@ -258,12 +258,12 @@ public class ClubService : IClubService
         var club = _dbContext.Clubs.AsNoTracking().FirstOrDefault(item => item.Id == clubId);
         if (club is null)
         {
-            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         if (!_dbContext.Users.Any(user => user.Id == currentUserId))
         {
-            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kullanıcı bulunamadı.");
         }
 
         var exists = _dbContext.ClubFollowers.Any(item => item.ClubId == clubId && item.UserId == currentUserId);
@@ -277,7 +277,7 @@ public class ClubService : IClubService
             });
             _dbContext.SaveChanges();
 
-            _notificationService.CreateForUsers([currentUserId], "Kulup takip edildi", $"{club.Name} etkinlikleri icin bildirim alacaksiniz.", "Club", $"/clubs/{clubId}");
+            _notificationService.CreateForUsers([currentUserId], "Kulüp takip edildi", $"{club.Name} etkinlikleri için bildirim alacaksınız.", "Club", $"/clubs/{clubId}");
         }
 
         return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
@@ -294,7 +294,7 @@ public class ClubService : IClubService
 
         if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
@@ -304,25 +304,30 @@ public class ClubService : IClubService
     {
         if (!CanManageTeam(clubId, currentUserId, currentUserRole))
         {
-            return ServiceResult<ClubManagerResponse>.Forbidden("Bu kulup icin yonetici ekleyemezsiniz.");
+            return ServiceResult<ClubManagerResponse>.Forbidden("Bu kulüp için yönetici ekleyemezsiniz.");
         }
 
         var user = _dbContext.Users.FirstOrDefault(item => item.Id == request.UserId);
         if (user is null)
         {
-            return ServiceResult<ClubManagerResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<ClubManagerResponse>.NotFound("Kullanıcı bulunamadı.");
         }
 
         if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<ClubManagerResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<ClubManagerResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         var normalizedRole = NormalizeManagerRole(request.Role);
         var existing = _dbContext.ClubManagers.Include(item => item.User).FirstOrDefault(item => item.ClubId == clubId && item.UserId == request.UserId);
         if (existing is not null)
         {
-            return ServiceResult<ClubManagerResponse>.Conflict("Bu kullanici zaten yonetim ekibinde.");
+            return ServiceResult<ClubManagerResponse>.Conflict("Bu kullanıcı zaten yönetim ekibinde.");
+        }
+
+        if (_dbContext.ClubManagers.Any(item => item.UserId == request.UserId))
+        {
+            return ServiceResult<ClubManagerResponse>.Conflict("Bu kullanıcı başka bir kulübün yönetim ekibinde.");
         }
 
         var manager = new ClubManager
@@ -337,7 +342,7 @@ public class ClubService : IClubService
         user.ClubId = clubId;
         _dbContext.SaveChanges();
 
-        _notificationService.CreateForUsers([user.Id], "Kulup yonetimine eklendiniz", $"Yeni rolunuz: {ToDisplayManagerRole(normalizedRole)}.", "Club", $"/clubs/{clubId}");
+        _notificationService.CreateForUsers([user.Id], "Kulüp yönetimine eklendiniz", $"Yeni rolünüz: {ToDisplayManagerRole(normalizedRole)}.", "Club", $"/clubs/{clubId}");
 
         manager = _dbContext.ClubManagers.Include(item => item.User).First(item => item.Id == manager.Id);
         return ServiceResult<ClubManagerResponse>.Created(MapManager(manager));
@@ -347,23 +352,23 @@ public class ClubService : IClubService
     {
         if (!CanManageTeam(clubId, currentUserId, currentUserRole))
         {
-            return ServiceResult.Forbidden("Bu kulup icin yonetici silemezsiniz.");
+            return ServiceResult.Forbidden("Bu kulüp için yönetici silemezsiniz.");
         }
 
         var manager = _dbContext.ClubManagers.Include(item => item.User).FirstOrDefault(item => item.Id == managerId && item.ClubId == clubId);
         if (manager is null)
         {
-            return ServiceResult.NotFound("Yonetici kaydi bulunamadi.");
+            return ServiceResult.NotFound("Yönetici kaydı bulunamadı.");
         }
 
         if (manager.Role == "President")
         {
-            return ServiceResult.Forbidden("Baskan bu islemle silinemez.");
+            return ServiceResult.Forbidden("Başkan bu işlemle silinemez.");
         }
 
         if (manager.UserId == currentUserId)
         {
-            return ServiceResult.Forbidden("Kendi yonetici kaydinizi kaldiramazsiniz.");
+            return ServiceResult.Forbidden("Kendi yönetici kaydınizi kaldiramazsiniz.");
         }
 
         var user = manager.User;
@@ -474,7 +479,7 @@ public class ClubService : IClubService
         string.Equals(role, "President", StringComparison.OrdinalIgnoreCase) ? "President" : "Manager";
 
     private static string ToDisplayManagerRole(string role) =>
-        role == "President" ? "Baskan" : "Yonetici";
+        role == "President" ? "Başkan" : "Yönetici";
 
     private static IReadOnlyDictionary<string, int> ParseDistribution(string? json) =>
         string.IsNullOrWhiteSpace(json)

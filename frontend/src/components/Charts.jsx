@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+﻿import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const palette = ["#0f766e", "#1d4ed8", "#c2410c", "#be123c", "#c6a86b", "#334155"];
 

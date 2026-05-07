@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -40,29 +40,29 @@ public class RegistrationService : IRegistrationService
     {
         if (!string.Equals(currentUserRole, "Student", StringComparison.OrdinalIgnoreCase))
         {
-            return ServiceResult<RegistrationResponse>.Forbidden("Sadece ogrenciler kayit olabilir.");
+            return ServiceResult<RegistrationResponse>.Forbidden("Sadece öğrenciler kayıt olabilir.");
         }
 
         var @event = _dbContext.Events.Include(item => item.Club).FirstOrDefault(item => item.Id == request.EventId);
         if (@event is null)
         {
-            return ServiceResult<RegistrationResponse>.NotFound("Etkinlik bulunamadi.");
+            return ServiceResult<RegistrationResponse>.NotFound("Etkinlik bulunamadı.");
         }
 
         if (@event.StartDate <= DateTime.UtcNow)
         {
-            return ServiceResult<RegistrationResponse>.BadRequest("Baslamis etkinliklere kayit yapilamaz.");
+            return ServiceResult<RegistrationResponse>.BadRequest("Baslamis etkinliklere kayıt yapılamaz.");
         }
 
         var user = _dbContext.Users.FirstOrDefault(item => item.Id == currentUserId);
         if (user is null)
         {
-            return ServiceResult<RegistrationResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<RegistrationResponse>.NotFound("Kullanıcı bulunamadı.");
         }
 
         if (!user.IsActiveMember)
         {
-            return ServiceResult<RegistrationResponse>.BadRequest("Kullanici aktif uye degil.");
+            return ServiceResult<RegistrationResponse>.BadRequest("Kullanıcı aktif üye değil.");
         }
 
         var duplicateRegistration = _dbContext.Registrations.Any(existingRegistration =>
@@ -71,7 +71,7 @@ public class RegistrationService : IRegistrationService
 
         if (duplicateRegistration)
         {
-            return ServiceResult<RegistrationResponse>.BadRequest("Bu etkinlige zaten kayitlisiniz.");
+            return ServiceResult<RegistrationResponse>.BadRequest("Bu etkinlige zaten kayıtlisiniz.");
         }
 
         var approvedCount = _dbContext.Registrations.Count(existingRegistration =>
@@ -104,11 +104,11 @@ public class RegistrationService : IRegistrationService
                 .Select(manager => manager.UserId)
                 .ToList();
 
-            _notificationService.CreateForUsers(recipientIds, "Yeni katilim basvurusu", $"{user.FullName}, {@event.Title} icin basvuru gonderdi.", "Registration", $"/events/{@event.Id}");
+            _notificationService.CreateForUsers(recipientIds, "Yeni katılım başvurusu", $"{user.FullName}, {@event.Title} için başvuru gönderdi.", "Registration", $"/events/{@event.Id}");
         }
         else
         {
-            _notificationService.CreateForUsers([currentUserId], "Kayit onaylandi", $"{@event.Title} etkinligi icin kaydiniz olusturuldu.", "Registration", $"/events/{@event.Id}");
+            _notificationService.CreateForUsers([currentUserId], "Kayıt onaylandı", $"{@event.Title} etkinligi için kaydıniz oluşturuldu.", "Registration", $"/events/{@event.Id}");
         }
 
         var responseRegistration = _dbContext.Registrations
@@ -142,12 +142,12 @@ public class RegistrationService : IRegistrationService
 
         if (!_dbContext.Events.Any(item => item.Id == request.EventId))
         {
-            return ServiceResult<RegistrationResponse>.NotFound("Etkinlik bulunamadi.");
+            return ServiceResult<RegistrationResponse>.NotFound("Etkinlik bulunamadı.");
         }
 
         if (!_dbContext.Users.Any(item => item.Id == request.UserId))
         {
-            return ServiceResult<RegistrationResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<RegistrationResponse>.NotFound("Kullanıcı bulunamadı.");
         }
 
         existingRegistration.UserId = request.UserId;
@@ -179,18 +179,18 @@ public class RegistrationService : IRegistrationService
     {
         if (!string.Equals(currentUserRole, "Student", StringComparison.OrdinalIgnoreCase))
         {
-            return ServiceResult.Forbidden("Sadece ogrenciler kayit iptal edebilir.");
+            return ServiceResult.Forbidden("Sadece öğrenciler kayıt iptal edebilir.");
         }
 
         var @event = _dbContext.Events.FirstOrDefault(item => item.Id == eventId);
         if (@event is null)
         {
-            return ServiceResult.NotFound("Etkinlik bulunamadi.");
+            return ServiceResult.NotFound("Etkinlik bulunamadı.");
         }
 
         if (@event.StartDate <= DateTime.UtcNow)
         {
-            return ServiceResult.BadRequest("Etkinlik basladiktan sonra ayrilma islemi yapilamaz.");
+            return ServiceResult.BadRequest("Etkinlik basladiktan sonra ayrilma islemi yapılamaz.");
         }
 
         var registration = _dbContext.Registrations
@@ -198,7 +198,7 @@ public class RegistrationService : IRegistrationService
 
         if (registration is null)
         {
-            return ServiceResult.NotFound("Kayit bulunamadi.");
+            return ServiceResult.NotFound("Kayıt bulunamadı.");
         }
 
         _dbContext.Registrations.Remove(registration);
@@ -219,7 +219,7 @@ public class RegistrationService : IRegistrationService
         if (!string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase))
         {
-            return ServiceResult<RegistrationResponse>.Forbidden("Kayit karari verme yetkiniz yok.");
+            return ServiceResult<RegistrationResponse>.Forbidden("Kayıt kararı verme yetkiniz yok.");
         }
 
         var registration = _dbContext.Registrations
@@ -229,7 +229,7 @@ public class RegistrationService : IRegistrationService
 
         if (registration is null || registration.Event is null)
         {
-            return ServiceResult<RegistrationResponse>.NotFound("Kayit bulunamadi.");
+            return ServiceResult<RegistrationResponse>.NotFound("Kayıt bulunamadı.");
         }
 
         if (string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase))
@@ -237,7 +237,7 @@ public class RegistrationService : IRegistrationService
             var currentUser = _dbContext.Users.AsNoTracking().FirstOrDefault(item => item.Id == currentUserId);
             if (currentUser?.ClubId != registration.Event.ClubId)
             {
-                return ServiceResult<RegistrationResponse>.Forbidden("Sadece kendi kulubunuzun basvurularini yonetebilirsiniz.");
+                return ServiceResult<RegistrationResponse>.Forbidden("Sadece kendi kulübünüzün başvurularını yönetebilirsiniz.");
             }
         }
 
@@ -254,7 +254,7 @@ public class RegistrationService : IRegistrationService
         registration.Status = normalizedDecision;
         _dbContext.SaveChanges();
 
-        _notificationService.CreateForUsers([registration.UserId], normalizedDecision == "Approved" ? "Basvurunuz onaylandi" : "Basvurunuz reddedildi", $"{registration.Event.Title} icin katilim basvurunuz {normalizedDecision.ToLower()}.", "Registration", $"/events/{registration.EventId}");
+        _notificationService.CreateForUsers([registration.UserId], normalizedDecision == "Approved" ? "Başvurunuz onaylandı" : "Başvurunuz reddedildi", $"{registration.Event.Title} için katılım başvurunuz {normalizedDecision.ToLower()}.", "Registration", $"/events/{registration.EventId}");
 
         var refreshed = _dbContext.Registrations.AsNoTracking().Include(item => item.User).Include(item => item.Event).First(item => item.Id == registrationId);
         return ServiceResult<RegistrationResponse>.Ok(Map(refreshed));

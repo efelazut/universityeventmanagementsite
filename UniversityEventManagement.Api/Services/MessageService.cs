@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -49,7 +49,7 @@ public class MessageService : IMessageService
         var thread = QueryThreads().FirstOrDefault(item => item.Id == threadId);
         if (thread is null)
         {
-            return ServiceResult<MessageThreadResponse>.NotFound("Mesajlasma bulunamadi.");
+            return ServiceResult<MessageThreadResponse>.NotFound("Mesajlaşma bulunamadı.");
         }
 
         if (!CanAccessThread(thread, currentUserId, currentUserRole))
@@ -67,13 +67,13 @@ public class MessageService : IMessageService
     {
         if (!string.Equals(currentUserRole, "Student", StringComparison.OrdinalIgnoreCase))
         {
-            return ServiceResult<MessageThreadResponse>.Forbidden("Yeni sohbet baslatma hakki yalnizca ogrencilere aciktir.");
+            return ServiceResult<MessageThreadResponse>.Forbidden("Yeni sohbet başlatma hakkı yalnızca öğrencilere açıktır.");
         }
 
         var club = _dbContext.Clubs.AsNoTracking().FirstOrDefault(item => item.Id == request.ClubId);
         if (club is null)
         {
-            return ServiceResult<MessageThreadResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<MessageThreadResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         var thread = new MessageThread
@@ -107,7 +107,7 @@ public class MessageService : IMessageService
             .Select(manager => manager.UserId)
             .ToList();
 
-        _notificationService.CreateForUsers(recipientIds, "Yeni kulup mesaji", $"{club.Name} icin yeni bir sohbet baslatildi.", "Message", $"/messages?thread={thread.Id}");
+        _notificationService.CreateForUsers(recipientIds, "Yeni kulüp mesaji", $"{club.Name} için yeni bir sohbet baslatildi.", "Message", $"/messages?thread={thread.Id}");
 
         return ServiceResult<MessageThreadResponse>.Created(MapThread(QueryThreads().First(item => item.Id == thread.Id), currentUserId));
     }
@@ -117,7 +117,7 @@ public class MessageService : IMessageService
         var thread = _dbContext.MessageThreads.FirstOrDefault(item => item.Id == threadId);
         if (thread is null)
         {
-            return ServiceResult<MessageThreadResponse>.NotFound("Sohbet bulunamadi.");
+            return ServiceResult<MessageThreadResponse>.NotFound("Sohbet bulunamadı.");
         }
 
         var hydratedThread = QueryThreads().First(item => item.Id == threadId);

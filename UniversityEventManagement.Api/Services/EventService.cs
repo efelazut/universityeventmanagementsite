@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -41,8 +41,8 @@ public class EventService : IEventService
         if (!normalizedClubId.HasValue)
         {
             return string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase)
-                ? ServiceResult<EventResponse>.BadRequest("Kulup bilgisi zorunludur.")
-                : ServiceResult<EventResponse>.Forbidden("Kulup yoneticisinin bagli oldugu bir kulup olmalidir.");
+                ? ServiceResult<EventResponse>.BadRequest("Kulüp bilgisi zorunludur.")
+                : ServiceResult<EventResponse>.Forbidden("Kulüp yöneticisinin bagli oldugu bir kulüp olmalidir.");
         }
 
         var validation = ValidateRelationshipsAndConflicts(request, null, normalizedClubId.Value);
@@ -84,7 +84,7 @@ public class EventService : IEventService
             .Select(follower => follower.UserId)
             .ToList();
 
-        _notificationService.CreateForUsers(recipientIds, "Yeni etkinlik yayinda", $"{createdEvent.Title} etkinligi kulup takvimine eklendi.", "Event", $"/events/{createdEvent.Id}");
+        _notificationService.CreateForUsers(recipientIds, "Yeni etkinlik yayinda", $"{createdEvent.Title} etkinligi kulüp takvimine eklendi.", "Event", $"/events/{createdEvent.Id}");
 
         var responseEvent = QueryEvents().First(@event => @event.Id == createdEvent.Id);
         return ServiceResult<EventResponse>.Created(MapEventResponse(responseEvent));
@@ -106,15 +106,15 @@ public class EventService : IEventService
 
         if (!CanManageEvent(currentUserResult.User!, existingEvent, currentUserRole))
         {
-            return ServiceResult<EventResponse>.Forbidden("Yalnizca kendi kulubunuze ait etkinlikleri guncelleyebilirsiniz.");
+            return ServiceResult<EventResponse>.Forbidden("Yalnızca kendi kulübünuze ait etkinlikleri güncelleyebilirsiniz.");
         }
 
         var normalizedClubId = ResolveClubIdForWrite(request.ClubId, currentUserResult.User!);
         if (!normalizedClubId.HasValue)
         {
             return string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase)
-                ? ServiceResult<EventResponse>.BadRequest("Kulup bilgisi zorunludur.")
-                : ServiceResult<EventResponse>.Forbidden("Kulup yoneticisinin bagli oldugu bir kulup olmalidir.");
+                ? ServiceResult<EventResponse>.BadRequest("Kulüp bilgisi zorunludur.")
+                : ServiceResult<EventResponse>.Forbidden("Kulüp yöneticisinin bagli oldugu bir kulüp olmalidir.");
         }
 
         var validation = ValidateRelationshipsAndConflicts(request, id, normalizedClubId.Value);
@@ -152,7 +152,7 @@ public class EventService : IEventService
             .Select(registration => registration.UserId)
             .ToList();
 
-        _notificationService.CreateForUsers(recipientIds, "Etkinlik guncellendi", $"{existingEvent.Title} icin tarih veya icerik bilgisi guncellendi.", "Event", $"/events/{existingEvent.Id}");
+        _notificationService.CreateForUsers(recipientIds, "Etkinlik güncellendi", $"{existingEvent.Title} için tarih veya içerik bilgisi güncellendi.", "Event", $"/events/{existingEvent.Id}");
 
         var responseEvent = QueryEvents().First(@event => @event.Id == id);
         return ServiceResult<EventResponse>.Ok(MapEventResponse(responseEvent));
@@ -179,12 +179,12 @@ public class EventService : IEventService
         var currentUser = _dbContext.Users.FirstOrDefault(user => user.Id == currentUserId);
         if (currentUser is null)
         {
-            return ServiceResult.Unauthorized("Kullanici dogrulanamadi.");
+            return ServiceResult.Unauthorized("Kullanıcı doğrulanamadı.");
         }
 
         if (!CanManageEvent(currentUser, @event, currentUserRole))
         {
-            return ServiceResult.Forbidden("Yalnizca kendi kulubunuze ait etkinlikleri silebilirsiniz.");
+            return ServiceResult.Forbidden("Yalnızca kendi kulübünuze ait etkinlikleri silebilirsiniz.");
         }
 
         return DeleteEventGraph(@event);
@@ -234,7 +234,7 @@ public class EventService : IEventService
         var @event = _dbContext.Events.FirstOrDefault(item => item.Id == eventId);
         if (@event is null)
         {
-            return ServiceResult<AttendanceResponse>.NotFound("Etkinlik bulunamadi.");
+            return ServiceResult<AttendanceResponse>.NotFound("Etkinlik bulunamadı.");
         }
 
         if (@event.EndDate > DateTime.UtcNow)
@@ -247,12 +247,12 @@ public class EventService : IEventService
 
         if (registration is null)
         {
-            return ServiceResult<AttendanceResponse>.NotFound("Kayit bulunamadi.");
+            return ServiceResult<AttendanceResponse>.NotFound("Kayıt bulunamadı.");
         }
 
         if (registration.Status != "Approved")
         {
-            return ServiceResult<AttendanceResponse>.BadRequest("Onaylanmamis kayitlar icin yoklama islenemez.");
+            return ServiceResult<AttendanceResponse>.BadRequest("Onaylanmamis kayıtlar için yoklama islenemez.");
         }
 
         if (!registration.Attended)
@@ -295,12 +295,12 @@ public class EventService : IEventService
     {
         if (!_dbContext.Rooms.Any(room => room.Id == request.RoomId))
         {
-            return ServiceResult<EventResponse>.NotFound("Salon bulunamadi.");
+            return ServiceResult<EventResponse>.NotFound("Salon bulunamadı.");
         }
 
         if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<EventResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<EventResponse>.NotFound("Kulüp bulunamadı.");
         }
 
         if (request.EndDate <= request.StartDate)
@@ -360,18 +360,18 @@ public class EventService : IEventService
         var currentUser = _dbContext.Users.FirstOrDefault(user => user.Id == currentUserId);
         if (currentUser is null)
         {
-            return (null, ServiceResult<EventResponse>.Unauthorized("Kullanici dogrulanamadi."));
+            return (null, ServiceResult<EventResponse>.Unauthorized("Kullanıcı doğrulanamadı."));
         }
 
         if (!string.Equals(currentUser.Role, currentUserRole, StringComparison.OrdinalIgnoreCase))
         {
-            return (null, ServiceResult<EventResponse>.Unauthorized("Kullanici rolu dogrulanamadi."));
+            return (null, ServiceResult<EventResponse>.Unauthorized("Kullanıcı rolü doğrulanamadı."));
         }
 
         if (string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase)
             && !_dbContext.ClubManagers.Any(manager => manager.UserId == currentUserId))
         {
-            return (null, ServiceResult<EventResponse>.Forbidden("Kulup yoneticisinin bagli oldugu bir kulup olmalidir."));
+            return (null, ServiceResult<EventResponse>.Forbidden("Kulüp yöneticisinin bagli oldugu bir kulüp olmalidir."));
         }
 
         return (currentUser, null);

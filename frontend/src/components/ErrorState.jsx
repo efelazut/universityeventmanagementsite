@@ -1,4 +1,4 @@
-import { EmptyState } from "./EmptyState";
+﻿import { EmptyState } from "./EmptyState";
 
 export function ErrorState({
   title = "Veri yüklenemedi",

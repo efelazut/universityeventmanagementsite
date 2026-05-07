@@ -1,12 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const testAccounts = [
   { label: "Yönetici", email: "admin@maltepe.edu.tr", password: "Admin123!", note: "Tüm yönetim ekranları" },
-  { label: "Anka kulüp yöneticisi", email: "anka.yonetici@uniconnect.edu.tr", password: "Password1!", note: "Etkinlik ve kulüp yönetimi" },
-  { label: "Sinema kulüp yöneticisi", email: "sinema.yonetici@uniconnect.edu.tr", password: "Password1!", note: "Kulüp rolü kontrolü" },
-  { label: "Hukuk kulüp yöneticisi", email: "hukuk.yonetici@uniconnect.edu.tr", password: "Password1!", note: "Kulüp rolü kontrolü" },
+  { label: "Anka kulüp yöneticisi", email: "anka.yönetici@uniconnect.edu.tr", password: "Password1!", note: "Etkinlik ve kulüp yönetimi" },
+  { label: "Sinema kulüp yöneticisi", email: "sinema.yönetici@uniconnect.edu.tr", password: "Password1!", note: "Kulüp rolü kontrolü" },
+  { label: "Hukuk kulüp yöneticisi", email: "hukuk.yönetici@uniconnect.edu.tr", password: "Password1!", note: "Kulüp rolü kontrolü" },
   { label: "Öğrenci 1", email: "emre.tunc@student.maltepe.edu.tr", password: "Password1!", note: "Öğrenci deneyimi" },
   { label: "Öğrenci 2", email: "elif.acar@student.maltepe.edu.tr", password: "Password1!", note: "Öğrenci deneyimi" },
   { label: "Öğrenci 3", email: "deniz.kaya@student.maltepe.edu.tr", password: "Password1!", note: "Öğrenci deneyimi" }

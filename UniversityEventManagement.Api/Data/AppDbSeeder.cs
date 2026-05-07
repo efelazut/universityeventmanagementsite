@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Models;
@@ -222,6 +222,19 @@ public static partial class AppDbSeeder
         }
 
         await dbContext.SaveChangesAsync();
+
+        var assignedManagerIds = await dbContext.ClubManagers.Select(manager => manager.UserId).ToListAsync();
+        var staleManagerUsers = await dbContext.Users
+            .Where(user => user.Role == UserRoles.ClubManager && !assignedManagerIds.Contains(user.Id))
+            .ToListAsync();
+
+        foreach (var staleUser in staleManagerUsers)
+        {
+            staleUser.Role = UserRoles.Student;
+            staleUser.ClubId = null;
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 
     private static async Task EnsurePresentationUsersAsync(AppDbContext dbContext, IReadOnlyList<Club> clubs)
@@ -273,19 +286,35 @@ public static partial class AppDbSeeder
         }
 
         var users = await dbContext.Users.ToListAsync();
-        var managerUsers = users.Where(user => user.Role == UserRoles.ClubManager).ToList();
         var studentUsers = users.Where(user => user.Role == UserRoles.Student).ToList();
 
         for (var index = 0; index < clubs.Count; index++)
         {
             var club = clubs[index];
-            var president = managerUsers.ElementAtOrDefault(index % Math.Max(managerUsers.Count, 1));
+            var presidentEmail = $"club-{club.Id}-president@uniconnect.edu.tr";
+            var president = users.FirstOrDefault(user => user.Email == presidentEmail);
             if (president is null)
             {
-                continue;
+                president = new User
+                {
+                    FullName = $"{club.Name} Başkanı",
+                    Email = presidentEmail,
+                    PasswordHash = "Password1!",
+                    Role = UserRoles.ClubManager,
+                    Department = club.Category,
+                    Faculty = "Öğrenci Toplulukları",
+                    StudentNumber = $"PRES{club.Id:0000}",
+                    YearClass = "Yönetim",
+                    Bio = $"{club.Name} başkan hesabı.",
+                    IsActiveMember = true,
+                    ClubId = club.Id
+                };
+                dbContext.Users.Add(president);
+                users.Add(president);
+                await dbContext.SaveChangesAsync();
             }
 
-            if (!await dbContext.ClubManagers.AnyAsync(item => item.ClubId == club.Id && item.UserId == president.Id))
+            if (!await dbContext.ClubManagers.AnyAsync(item => item.UserId == president.Id))
             {
                 dbContext.ClubManagers.Add(new ClubManager
                 {
@@ -300,15 +329,40 @@ public static partial class AppDbSeeder
             club.PresidentName = president.FullName;
             club.PresidentEmail = president.Email;
 
-            var assistant = managerUsers.ElementAtOrDefault((index + 1) % Math.Max(managerUsers.Count, 1));
-            if (assistant is not null && assistant.Id != president.Id && !await dbContext.ClubManagers.AnyAsync(item => item.ClubId == club.Id && item.UserId == assistant.Id))
+            if (index < 4)
             {
-                dbContext.ClubManagers.Add(new ClubManager
+                var assistantEmail = $"club-{club.Id}-manager@uniconnect.edu.tr";
+                var assistant = users.FirstOrDefault(user => user.Email == assistantEmail);
+                if (assistant is null)
                 {
-                    ClubId = club.Id,
-                    UserId = assistant.Id,
-                    Role = "Manager"
-                });
+                    assistant = new User
+                    {
+                        FullName = $"{club.Name} Yöneticisi",
+                        Email = assistantEmail,
+                        PasswordHash = "Password1!",
+                        Role = UserRoles.ClubManager,
+                        Department = club.Category,
+                        Faculty = "Öğrenci Toplulukları",
+                        StudentNumber = $"MGR{club.Id:0000}",
+                        YearClass = "Yönetim",
+                        Bio = $"{club.Name} yönetici hesabı.",
+                        IsActiveMember = true,
+                        ClubId = club.Id
+                    };
+                    dbContext.Users.Add(assistant);
+                    users.Add(assistant);
+                    await dbContext.SaveChangesAsync();
+                }
+
+                if (!await dbContext.ClubManagers.AnyAsync(item => item.UserId == assistant.Id))
+                {
+                    dbContext.ClubManagers.Add(new ClubManager
+                    {
+                        ClubId = club.Id,
+                        UserId = assistant.Id,
+                        Role = "Manager"
+                    });
+                }
             }
 
             foreach (var follower in studentUsers.Skip(index % Math.Max(studentUsers.Count, 1)).Take(3))

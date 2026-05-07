@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatEventDate, getEventVisualState } from "../utils/eventPresentation";
 
@@ -29,10 +29,10 @@ function safeText(value, fallback) {
 }
 
 export function EventCard({ event, actionLabel = "Detay", actionTo, footer, compact = false }) {
-  const organizerName = safeText(event?.clubName || event?.organizerText, "Duzenleyen bilgisi yok");
+  const organizerName = safeText(event?.clubName || event?.organizerText, "Düzenleyen bilgisi yok");
   const safeEvent = {
     id: Number(event?.id) || 0,
-    title: safeText(event?.title, "Etkinlik adi guncelleniyor"),
+    title: safeText(event?.title, "Etkinlik adı güncelleniyor"),
     clubName: organizerName,
     description: safeText(event?.description, ""),
     category: safeText(event?.category, ""),
@@ -83,7 +83,7 @@ export function EventCard({ event, actionLabel = "Detay", actionTo, footer, comp
           <h3 className="event-title">{safeEvent.title}</h3>
           <div className="event-mini-meta">
             <span>{formatEventDate(safeEvent.startDate)}</span>
-            {visibleCount ? <span>{visibleCount} katilim</span> : null}
+            {visibleCount ? <span>{visibleCount} katılım</span> : null}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -13,10 +13,10 @@ function normalizeEvent(item = {}) {
 
   return {
     id: Number(item.id) || 0,
-    title: String(item.title || "Etkinlik adi guncelleniyor"),
-    clubName: String(item.clubName || organizerText || "Duzenleyen bilgisi yok"),
+    title: String(item.title || "Etkinlik adı güncelleniyor"),
+    clubName: String(item.clubName || organizerText || "Düzenleyen bilgisi yok"),
     organizerText,
-    description: String(item.description || "Etkinlik aciklamasi henuz eklenmedi."),
+    description: String(item.description || "Etkinlik açıklaması henüz eklenmedi."),
     category: String(item.category || ""),
     campus: String(item.campus || ""),
     format: String(item.format || "Fiziksel"),
@@ -105,7 +105,7 @@ export function EventsPage() {
 
     try {
       await deleteEvent(id, user.token, apiBaseUrl);
-      setFeedback({ type: "success", text: "Etkinlik basariyla silindi." });
+      setFeedback({ type: "success", text: "Etkinlik başarıyla silindi." });
       await Promise.all([eventsQuery.reload(), myEventsQuery.reload()]);
     } catch (error) {
       setFeedback({ type: "error", text: error.message || "Etkinlik silinemedi." });
@@ -152,7 +152,7 @@ export function EventsPage() {
         <div className="filter-toolbar event-filter-toolbar">
           <label className="filter-field">
             <span>Ara</span>
-            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulup adi" />
+            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulüp adi" />
           </label>
           <label className="filter-field">
             <span>Durum</span>
@@ -204,7 +204,7 @@ export function EventsPage() {
                   canManageEvent(item) ? (
                     <div className="inline-actions">
                       <Link className="ghost-button link-button" to={`/events/${item.id}/edit`}>
-                        Duzenle
+                        Düzenle
                       </Link>
                       <button className="ghost-button" type="button" onClick={() => handleDelete(item.id)}>
                         Sil
@@ -217,7 +217,7 @@ export function EventsPage() {
           </div>
         </SectionCard>
       ) : (
-        <EmptyState title="Etkinlik bulunamadi." description="Diger zaman kutucuguna gecebilir veya filtreleri gevsetebilirsiniz." icon="Et" />
+        <EmptyState title="Etkinlik bulunamadı." description="Diğer zaman kutucuğuna geçebilir veya filtreleri gevşetebilirsiniz." icon="Et" />
       )}
     </div>
   );

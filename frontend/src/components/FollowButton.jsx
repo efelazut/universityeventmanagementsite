@@ -1,4 +1,4 @@
-export function FollowButton({ status, disabled, onFollow, onUnfollow }) {
+﻿export function FollowButton({ status, disabled, onFollow, onUnfollow }) {
   const isFollowing = Boolean(status?.isFollowing);
 
   return (

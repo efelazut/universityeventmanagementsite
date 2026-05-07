@@ -1,4 +1,4 @@
-function getInitials(name) {
+﻿function getInitials(name) {
   return String(name || "?")
     .split(" ")
     .slice(0, 2)

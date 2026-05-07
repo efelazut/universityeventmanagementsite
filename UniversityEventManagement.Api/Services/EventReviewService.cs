@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -34,24 +34,24 @@ public class EventReviewService : IEventReviewService
     {
         if (!string.Equals(userRole, "Student", StringComparison.OrdinalIgnoreCase))
         {
-            return ServiceResult<EventReviewResponse>.Forbidden("Sadece ogrenciler etkinlik degerlendirmesi yapabilir.");
+            return ServiceResult<EventReviewResponse>.Forbidden("Sadece öğrenciler etkinlik değerlendirmesi yapabilir.");
         }
 
         var user = _dbContext.Users.FirstOrDefault(item => item.Id == userId);
         if (user is null)
         {
-            return ServiceResult<EventReviewResponse>.Unauthorized("Kullanici dogrulanamadi.");
+            return ServiceResult<EventReviewResponse>.Unauthorized("Kullanıcı doğrulanamadı.");
         }
 
         var @event = _dbContext.Events.FirstOrDefault(item => item.Id == eventId);
         if (@event is null)
         {
-            return ServiceResult<EventReviewResponse>.NotFound("Etkinlik bulunamadi.");
+            return ServiceResult<EventReviewResponse>.NotFound("Etkinlik bulunamadı.");
         }
 
         if (@event.EndDate > DateTime.UtcNow)
         {
-            return ServiceResult<EventReviewResponse>.BadRequest("Etkinlik tamamlanmadan degerlendirme yapilamaz.");
+            return ServiceResult<EventReviewResponse>.BadRequest("Etkinlik tamamlanmadan değerlendirme yapılamaz.");
         }
 
         var attended = _dbContext.Registrations.Any(registration =>
@@ -61,7 +61,7 @@ public class EventReviewService : IEventReviewService
 
         if (!attended)
         {
-            return ServiceResult<EventReviewResponse>.Forbidden("Yalnizca katildiginiz etkinlikleri degerlendirebilirsiniz.");
+            return ServiceResult<EventReviewResponse>.Forbidden("Yalnızca katıldığınız etkinlikleri değerlendirebilirsiniz.");
         }
 
         var existing = _dbContext.EventReviews
@@ -70,7 +70,7 @@ public class EventReviewService : IEventReviewService
 
         if (existing is not null)
         {
-            return ServiceResult<EventReviewResponse>.Conflict("Bu etkinlik icin zaten degerlendirme yaptiniz.");
+            return ServiceResult<EventReviewResponse>.Conflict("Bu etkinlik için zaten değerlendirme yaptınız.");
         }
 
         var created = new EventReview

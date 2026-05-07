@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -218,7 +218,7 @@ export function EventDetailPage() {
                 </span>
                 {!eventStarted && (
                   <button className="ghost-button mini-button" title="İptal Et" onClick={handleCancelRegistration}>
-                    ✕
+                    âœ•
                   </button>
                 )}
               </div>

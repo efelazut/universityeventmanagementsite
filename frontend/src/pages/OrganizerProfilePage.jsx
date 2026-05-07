@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+﻿import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { EventCard } from "../components/EventCard";
 import { RatingStars } from "../components/RatingStars";

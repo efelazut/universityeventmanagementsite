@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
@@ -40,8 +40,9 @@ export function Layout({ children }) {
 
   const clubs = Array.isArray(clubsQuery.data) ? clubsQuery.data : [];
   const managedClubs = useMemo(() => {
-    const fromProfile = Array.isArray(profileQuery.data?.managedClubs) ? profileQuery.data.managedClubs : [];
-    if (fromProfile.length) return fromProfile;
+    if (Array.isArray(profileQuery.data?.managedClubs)) {
+      return profileQuery.data.managedClubs;
+    }
 
     const fromAuth = Array.isArray(user?.managedClubs) ? user.managedClubs : [];
     if (fromAuth.length) return fromAuth;
@@ -56,7 +57,7 @@ export function Layout({ children }) {
 
   const openMyClub = () => {
     setMenuOpen(false);
-    navigate(managedClubs.length === 1 ? `/clubs/${managedClubs[0].clubId}` : "/clubs");
+    navigate(managedClubs.length ? `/clubs/${managedClubs[0].clubId}` : "/clubs");
   };
 
   useEffect(() => {
@@ -228,4 +229,3 @@ export function Layout({ children }) {
     </div>
   );
 }
-

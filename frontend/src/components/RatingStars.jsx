@@ -1,4 +1,4 @@
-export function RatingStars({ value = 0, reviewCount, compact = false }) {
+﻿export function RatingStars({ value = 0, reviewCount, compact = false }) {
   const safeValue = Math.max(0, Math.min(5, Number(value) || 0));
   const filledCount = Math.round(safeValue);
 
@@ -7,7 +7,7 @@ export function RatingStars({ value = 0, reviewCount, compact = false }) {
       <div className="rating-stars-track" aria-hidden="true">
         {Array.from({ length: 5 }, (_, index) => (
           <span key={index} className={index < filledCount ? "is-filled" : ""}>
-            ★
+            â˜…
           </span>
         ))}
       </div>

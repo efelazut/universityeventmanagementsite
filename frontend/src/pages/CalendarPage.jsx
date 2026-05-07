@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -125,14 +125,14 @@ export function CalendarPage() {
         <section className="modern-calendar-card">
           <div className="modern-calendar-head">
             <button className="calendar-arrow" type="button" onClick={() => goToMonth(-1)} aria-label="Önceki ay">
-              ‹
+              â€¹
             </button>
             <div>
               <h2>{currentMonth.toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</h2>
               <span>{currentMonthEventCount} etkinlik planlandı</span>
             </div>
             <button className="calendar-arrow" type="button" onClick={() => goToMonth(1)} aria-label="Sonraki ay">
-              ›
+              â€º
             </button>
           </div>
 

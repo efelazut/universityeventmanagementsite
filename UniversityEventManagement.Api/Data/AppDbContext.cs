@@ -345,6 +345,9 @@ public class AppDbContext : DbContext
             entity.HasIndex(manager => new { manager.ClubId, manager.UserId })
                 .IsUnique();
 
+            entity.HasIndex(manager => manager.UserId)
+                .IsUnique();
+
             entity.HasOne(manager => manager.Club)
                 .WithMany(club => club.Managers)
                 .HasForeignKey(manager => manager.ClubId)

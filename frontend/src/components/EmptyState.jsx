@@ -1,4 +1,4 @@
-function EmptyIcon({ name }) {
+﻿function EmptyIcon({ name }) {
   const key = String(name || "info").toLowerCase();
   const common = {
     width: 22,

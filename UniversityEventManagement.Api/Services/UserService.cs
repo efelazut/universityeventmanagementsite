@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -15,11 +15,21 @@ public class UserService : IUserService
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<UserResponse> GetAll() => _dbContext.Users.AsNoTracking().Select(MapProjection).ToList();
+    public IReadOnlyList<UserResponse> GetAll() => _dbContext.Users
+        .AsNoTracking()
+        .Include(user => user.ManagedClubs)
+            .ThenInclude(manager => manager.Club)
+        .ToList()
+        .Select(Map)
+        .ToList();
 
     public ServiceResult<UserResponse> GetById(int id)
     {
-        var user = _dbContext.Users.AsNoTracking().FirstOrDefault(item => item.Id == id);
+        var user = _dbContext.Users
+            .AsNoTracking()
+            .Include(item => item.ManagedClubs)
+                .ThenInclude(manager => manager.Club)
+            .FirstOrDefault(item => item.Id == id);
         return user is null ? ServiceResult<UserResponse>.NotFound() : ServiceResult<UserResponse>.Ok(Map(user));
     }
 
@@ -306,7 +316,16 @@ public class UserService : IUserService
         AvatarUrl = user.AvatarUrl,
         Bio = user.Bio,
         IsActiveMember = user.IsActiveMember,
-        ClubId = user.ClubId
+        ClubId = user.ClubId,
+        ManagedClubs = user.ManagedClubs
+            .Where(manager => manager.Club is not null)
+            .Select(manager => new ManagedClubSummaryResponse
+            {
+                ClubId = manager.ClubId,
+                ClubName = manager.Club!.Name,
+                Role = manager.Role
+            })
+            .ToList()
     };
 
     private static System.Linq.Expressions.Expression<Func<User, UserResponse>> MapProjection => user => new UserResponse

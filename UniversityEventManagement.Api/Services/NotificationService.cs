@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -35,7 +35,7 @@ public class NotificationService : INotificationService
         var notification = _dbContext.Notifications.FirstOrDefault(item => item.Id == notificationId && item.UserId == userId);
         if (notification is null)
         {
-            return ServiceResult.NotFound("Bildirim bulunamadi.");
+            return ServiceResult.NotFound("Bildirim bulunamadı.");
         }
 
         notification.IsRead = true;

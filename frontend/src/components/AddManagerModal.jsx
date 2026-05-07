@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 
 export function AddManagerModal({ open, users, managers, loading, onClose, onAssign }) {
   const [query, setQuery] = useState("");
@@ -8,6 +8,8 @@ export function AddManagerModal({ open, users, managers, loading, onClose, onAss
     const value = query.trim().toLocaleLowerCase("tr-TR");
     return users
       .filter((user) => !managerIds.has(user.id))
+      .filter((user) => !(Array.isArray(user.managedClubs) && user.managedClubs.length))
+      .filter((user) => user.role !== "ClubManager" || !user.clubId)
       .filter((user) => {
         if (!value) return true;
         return `${user.fullName} ${user.email}`.toLocaleLowerCase("tr-TR").includes(value);
@@ -48,7 +50,7 @@ export function AddManagerModal({ open, users, managers, loading, onClose, onAss
               </div>
             </button>
           ))}
-          {!filteredUsers.length ? <div className="notice-box">Uygun kullanıcı bulunamadı veya herkes zaten ekipte.</div> : null}
+          {!filteredUsers.length ? <div className="notice-box">Uygun kullanıcı bulunamadı; listedeki kişiler zaten ekipte ya da başka bir kulübü yönetiyor.</div> : null}
         </div>
 
         <button className="primary-button" type="button" disabled={!selectedUserId || loading} onClick={() => onAssign(Number(selectedUserId))}>

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
@@ -161,7 +161,7 @@ public class StatisticsService : IStatisticsService
 
         if (user is null)
         {
-            return ServiceResult<PersonalStatisticsResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<PersonalStatisticsResponse>.NotFound("Kullanıcı bulunamadı.");
         }
 
         var now = DateTime.UtcNow;
