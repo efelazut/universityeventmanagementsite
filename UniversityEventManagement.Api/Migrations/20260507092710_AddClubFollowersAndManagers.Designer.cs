@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UniversityEventManagement.Api.Data;
@@ -11,9 +12,11 @@ using UniversityEventManagement.Api.Data;
 namespace UniversityEventManagement.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507092710_AddClubFollowersAndManagers")]
+    partial class AddClubFollowersAndManagers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -169,6 +172,43 @@ namespace UniversityEventManagement.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("ClubManagers", (string)null);
+                });
+
+            modelBuilder.Entity("UniversityEventManagement.Api.Models.ClubMembership", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClubId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ClubId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ClubMemberships", (string)null);
                 });
 
             modelBuilder.Entity("UniversityEventManagement.Api.Models.ClubStatistic", b =>
@@ -752,6 +792,25 @@ namespace UniversityEventManagement.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("UniversityEventManagement.Api.Models.ClubMembership", b =>
+                {
+                    b.HasOne("UniversityEventManagement.Api.Models.Club", "Club")
+                        .WithMany("Memberships")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UniversityEventManagement.Api.Models.User", "User")
+                        .WithMany("ClubMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Club");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("UniversityEventManagement.Api.Models.ClubStatistic", b =>
                 {
                     b.HasOne("UniversityEventManagement.Api.Models.Club", "Club")
@@ -889,7 +948,7 @@ namespace UniversityEventManagement.Api.Migrations
             modelBuilder.Entity("UniversityEventManagement.Api.Models.User", b =>
                 {
                     b.HasOne("UniversityEventManagement.Api.Models.Club", "Club")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("ClubId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -903,6 +962,10 @@ namespace UniversityEventManagement.Api.Migrations
                     b.Navigation("Followers");
 
                     b.Navigation("Managers");
+
+                    b.Navigation("Members");
+
+                    b.Navigation("Memberships");
 
                     b.Navigation("MessageThreads");
 
@@ -930,6 +993,8 @@ namespace UniversityEventManagement.Api.Migrations
 
             modelBuilder.Entity("UniversityEventManagement.Api.Models.User", b =>
                 {
+                    b.Navigation("ClubMemberships");
+
                     b.Navigation("FollowedClubs");
 
                     b.Navigation("ManagedClubs");

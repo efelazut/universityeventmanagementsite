@@ -4,35 +4,26 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { EventCard } from "../components/EventCard";
-import { RatingStars } from "../components/RatingStars";
+import { FollowButton } from "../components/FollowButton";
+import { ClubManagementSection } from "../components/ClubManagementSection";
 import { SectionCard } from "../components/SectionCard";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 import { useAsyncData } from "../hooks/useAsyncData";
 import {
-  assignClubOfficer,
-  assignClubPresident,
+  addClubManager,
   deleteClub,
   fetchClubById,
   fetchClubEvents,
-  fetchClubMembers,
+  fetchClubFollowStatus,
+  fetchClubManagers,
   fetchClubStatistics,
-  joinClub,
-  removeClubMembership
+  fetchUsers,
+  followClub,
+  removeClubManager,
+  unfollowClub
 } from "../services/resourceService";
-
-function getRoleLabel(role) {
-  if (role === "President") return "Kulüp Başkanı";
-  if (role === "Assistant") return "Yönetici";
-  return "Üye";
-}
-
-function getRoleTone(role) {
-  if (role === "President") return "tone-gold";
-  if (role === "Assistant") return "tone-blue";
-  return "tone-dark";
-}
 
 function isOptionalAuthError(message) {
   const value = String(message || "").toLowerCase();
@@ -46,68 +37,22 @@ export function ClubDetailPage() {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(null);
   const [busyAction, setBusyAction] = useState("");
-  const [pendingDialog, setPendingDialog] = useState(null);
-  const [confirmText, setConfirmText] = useState("");
-  const club = useAsyncData(async () => {
-    try {
-      return await fetchClubById(id, apiBaseUrl);
-    } catch (error) {
-      console.error("[ClubDetailPage] public club request failed", {
-        endpoint: `/api/Clubs/${id}`,
-        message: error?.message || error
-      });
-      throw error;
-    }
-  }, [id, apiBaseUrl]);
+  const [managerModalOpen, setManagerModalOpen] = useState(false);
+  const [pendingRemoveManager, setPendingRemoveManager] = useState(null);
+
+  const club = useAsyncData(() => fetchClubById(id, apiBaseUrl), [id, apiBaseUrl]);
   const resolvedClubId = Number(club.data?.id) || 0;
-  const members = useAsyncData(async () => {
-    if (!resolvedClubId) {
-      return [];
-    }
-
-    try {
-      return await fetchClubMembers(resolvedClubId, apiBaseUrl);
-    } catch (error) {
-      console.error("[ClubDetailPage] optional club members request failed", {
-        endpoint: `/api/Clubs/${resolvedClubId}/members`,
-        message: error?.message || error,
-        hasToken: Boolean(user?.token)
-      });
-      throw error;
-    }
-  }, [resolvedClubId, apiBaseUrl, user?.token]);
-  const events = useAsyncData(async () => {
-    if (!resolvedClubId) {
-      return [];
-    }
-
-    try {
-      return await fetchClubEvents(resolvedClubId, apiBaseUrl);
-    } catch (error) {
-      console.error("[ClubDetailPage] optional club events request failed", {
-        endpoint: `/api/Clubs/${resolvedClubId}/events`,
-        message: error?.message || error,
-        hasToken: Boolean(user?.token)
-      });
-      throw error;
-    }
-  }, [resolvedClubId, apiBaseUrl, user?.token]);
-  const stats = useAsyncData(async () => {
-    if (!resolvedClubId) {
-      return { activeMemberCount: 0, eventCount: 0, totalRegistrations: 0 };
-    }
-
-    try {
-      return await fetchClubStatistics(resolvedClubId, apiBaseUrl);
-    } catch (error) {
-      console.error("[ClubDetailPage] optional club statistics request failed", {
-        endpoint: `/api/Clubs/${resolvedClubId}/statistics`,
-        message: error?.message || error,
-        hasToken: Boolean(user?.token)
-      });
-      throw error;
-    }
-  }, [resolvedClubId, apiBaseUrl, user?.token]);
+  const managers = useAsyncData(() => (resolvedClubId ? fetchClubManagers(resolvedClubId, apiBaseUrl) : Promise.resolve([])), [resolvedClubId, apiBaseUrl]);
+  const events = useAsyncData(() => (resolvedClubId ? fetchClubEvents(resolvedClubId, apiBaseUrl) : Promise.resolve([])), [resolvedClubId, apiBaseUrl]);
+  const stats = useAsyncData(
+    () => (resolvedClubId ? fetchClubStatistics(resolvedClubId, apiBaseUrl) : Promise.resolve({ eventCount: 0, totalRegistrations: 0 })),
+    [resolvedClubId, apiBaseUrl]
+  );
+  const followStatus = useAsyncData(
+    () => (resolvedClubId && user?.token ? fetchClubFollowStatus(resolvedClubId, user.token, apiBaseUrl) : Promise.resolve(null)),
+    [resolvedClubId, user?.token, apiBaseUrl]
+  );
+  const users = useAsyncData(() => (user?.token ? fetchUsers(apiBaseUrl) : Promise.resolve([])), [user?.token, apiBaseUrl]);
 
   if (club.loading) {
     return <div className="loading-state loading-state-large">Kulüp sayfası hazırlanıyor...</div>;
@@ -126,83 +71,98 @@ export function ClubDetailPage() {
   }
 
   const clubData = club.data || {};
-  const membersError = members.error && !isOptionalAuthError(members.error) ? members.error : "";
-  const eventsError = events.error && !isOptionalAuthError(events.error) ? events.error : "";
-  const statsError = stats.error && !isOptionalAuthError(stats.error) ? stats.error : "";
-  const statsData = statsError ? { activeMemberCount: 0, eventCount: 0, totalRegistrations: 0 } : (stats.data || { activeMemberCount: 0, eventCount: 0, totalRegistrations: 0 });
-  const facultyDistribution = Object.entries(statsData.facultyDistribution || {}).slice(0, 6);
-  const departmentDistribution = Object.entries(statsData.departmentDistribution || {}).slice(0, 6);
-  const displayedMemberCount = statsData.actualMemberCount ?? statsData.activeMemberCount ?? clubData.actualMemberCount ?? clubData.declaredMemberCount ?? 0;
-  const memberList = membersError ? [] : (Array.isArray(members.data) ? members.data : []);
-  const clubEvents = eventsError ? [] : (Array.isArray(events.data) ? events.data : []);
-  const isMember = memberList.some((item) => item.userId === user?.id);
-  const currentMembership = memberList.find((item) => item.userId === user?.id) || null;
-  const isPresident = currentMembership?.role === "President";
-  const isAssistant = currentMembership?.role === "Assistant";
-  const canDeleteClub = Boolean(user && (user.role === "Admin" || isPresident));
+  const managerList = Array.isArray(managers.data) ? managers.data : [];
+  const clubEvents = Array.isArray(events.data) ? events.data : [];
+  const statsData = stats.data || { eventCount: 0, totalRegistrations: 0 };
+  const userList = Array.isArray(users.data) ? users.data : [];
+  const currentManager = managerList.find((manager) => manager.userId === user?.id);
+  const canManageTeam = Boolean(user && (user.role === "Admin" || currentManager?.role === "President"));
+  const canDeleteClub = Boolean(user && (user.role === "Admin" || currentManager?.role === "President"));
+  const optionalError = [managers.error, events.error, stats.error, followStatus.error]
+    .filter((error) => error && !isOptionalAuthError(error))
+    .join(" ");
 
-  const groupedMembers = {
-    president: memberList.find((member) => member.role === "President") || null,
-    assistants: memberList.filter((member) => member.role === "Assistant"),
-    members: memberList.filter((member) => member.role === "Member")
+  const reloadClubState = async () => {
+    await Promise.all([club.reload(), managers.reload(), stats.reload(), followStatus.reload()]);
   };
 
-  const showMemberAction = (member, action) => {
-    if (!user || member.userId === user.id) return false;
-    if (user.role === "Admin") {
-      if (action === "promote") return member.role === "Member";
-      if (action === "demote") return member.role === "Assistant";
-      if (action === "transfer") return member.role !== "President";
-      if (action === "remove") return member.role !== "President";
-      return false;
+  const handleFollow = async () => {
+    if (!user?.token) {
+      navigate("/login");
+      return;
     }
 
-    if (isPresident) {
-      if (action === "promote") return member.role === "Member";
-      if (action === "demote") return member.role === "Assistant";
-      if (action === "transfer") return member.role === "Assistant" || member.role === "Member";
-      if (action === "remove") return member.role !== "President";
-      return false;
-    }
-
-    if (isAssistant) {
-      if (action === "promote") return member.role === "Member";
-      if (action === "remove") return member.role === "Member";
-    }
-
-    return false;
-  };
-
-  const openRoleDialog = (dialog) => {
-    setConfirmText("");
-    setPendingDialog(dialog);
-  };
-
-  const closeDialog = () => {
-    if (!busyAction) {
-      setPendingDialog(null);
-      setConfirmText("");
-    }
-  };
-
-  const refreshClubState = async () => {
-    await Promise.all([members.reload(), club.reload(), stats.reload()]);
-  };
-
-  const handleJoin = async () => {
+    setBusyAction("follow");
     try {
-      await joinClub(id, user.token, apiBaseUrl);
-      setFeedback({ type: "success", text: "Kulübe katıldınız." });
-      await refreshClubState();
+      await followClub(resolvedClubId, user.token, apiBaseUrl);
+      setFeedback({ type: "success", text: "Kulüp takip edildi. Yeni etkinliklerde bildirim alacaksınız." });
+      await followStatus.reload();
+      await club.reload();
     } catch (error) {
-      setFeedback({ type: "error", text: error.message || "Kulübe katılım sağlanamadı." });
+      setFeedback({ type: "error", text: error.message || "Takip işlemi tamamlanamadı." });
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleUnfollow = async () => {
+    setBusyAction("follow");
+    try {
+      await unfollowClub(resolvedClubId, user.token, apiBaseUrl);
+      setFeedback({ type: "success", text: "Kulüp takipten çıkarıldı." });
+      await followStatus.reload();
+      await club.reload();
+    } catch (error) {
+      setFeedback({ type: "error", text: error.message || "Takipten çıkma işlemi tamamlanamadı." });
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleAddManager = async (userId) => {
+    setBusyAction("manager");
+    try {
+      await addClubManager(resolvedClubId, { userId, role: "Manager" }, user.token, apiBaseUrl);
+      setFeedback({ type: "success", text: "Yönetici eklendi." });
+      setManagerModalOpen(false);
+      await reloadClubState();
+    } catch (error) {
+      setFeedback({ type: "error", text: error.message || "Yönetici eklenemedi." });
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleRemoveManager = async () => {
+    if (!pendingRemoveManager) return;
+    setBusyAction("manager-remove");
+    try {
+      await removeClubManager(resolvedClubId, pendingRemoveManager.id, user.token, apiBaseUrl);
+      setFeedback({ type: "success", text: "Yönetici ekipten çıkarıldı." });
+      setPendingRemoveManager(null);
+      await reloadClubState();
+    } catch (error) {
+      setFeedback({ type: "error", text: error.message || "Yönetici silinemedi." });
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleDeleteClub = async () => {
+    setBusyAction("delete-club");
+    try {
+      await deleteClub(resolvedClubId, user.token, apiBaseUrl);
+      navigate("/clubs", { replace: true, state: { notice: "Kulüp silindi." } });
+    } catch (error) {
+      setFeedback({ type: "error", text: error.message || "Kulüp silinemedi." });
+      setBusyAction("");
     }
   };
 
   const handleMessage = async () => {
     try {
       await openMessages({
-        clubId: Number(id),
+        clubId: resolvedClubId,
         subject: `${clubData.name} hakkında`,
         initialMessage: "Kulüp faaliyetleri hakkında bilgi rica ediyorum."
       });
@@ -210,76 +170,6 @@ export function ClubDetailPage() {
       setFeedback({ type: "error", text: error.message || "Kulübe mesaj gönderilemedi." });
     }
   };
-
-  const runMembershipAction = async () => {
-    if (!pendingDialog || !user) return;
-
-    const { type, member } = pendingDialog;
-    const actionKey = `${type}-${member?.id || "club"}`;
-    setBusyAction(actionKey);
-    setFeedback(null);
-
-    try {
-      if (type === "promote") {
-        await assignClubOfficer(id, { userId: member.userId, role: "Assistant" }, user.token, apiBaseUrl);
-        setFeedback({ type: "success", text: `${member.userFullName} yönetici yapıldı.` });
-      }
-
-      if (type === "demote") {
-        await assignClubOfficer(id, { userId: member.userId, role: "Member" }, user.token, apiBaseUrl);
-        setFeedback({ type: "success", text: `${member.userFullName} artık üye rolünde.` });
-      }
-
-      if (type === "transfer") {
-        await assignClubPresident(id, member.userId, user.token, apiBaseUrl);
-        setFeedback({ type: "success", text: `Başkanlık ${member.userFullName} kullanıcısına devredildi.` });
-      }
-
-      if (type === "remove") {
-        await removeClubMembership(id, member.id, user.token, apiBaseUrl);
-        setFeedback({ type: "success", text: "Üyelik kaldırıldı." });
-      }
-
-      if (type === "delete-club") {
-        await deleteClub(id, user.token, apiBaseUrl);
-        navigate("/clubs", { replace: true, state: { notice: "Kulüp ve bağlı etkinlikleri silindi." } });
-        return;
-      }
-
-      await refreshClubState();
-      setPendingDialog(null);
-      setConfirmText("");
-    } catch (error) {
-      setFeedback({ type: "error", text: error.message || "İşlem tamamlanamadı." });
-    } finally {
-      setBusyAction("");
-    }
-  };
-
-  const dialogRequiresPhrase = pendingDialog?.type === "transfer";
-
-  const renderMemberRow = (member, emphasize = false) => (
-    <div key={member.id} className={`team-member-card ${emphasize ? "is-president" : ""}`}>
-      <div className="team-member-main">
-        <div className="team-member-avatar">{member.userFullName?.slice(0, 1) || "Ü"}</div>
-        <div className="team-member-copy">
-          <div className="team-member-head">
-            <strong>{member.userFullName}</strong>
-            <span className={`pill ${getRoleTone(member.role)}`}>{getRoleLabel(member.role)}</span>
-          </div>
-          <span>{member.userEmail}</span>
-        </div>
-      </div>
-
-      <div className="team-member-actions">
-        {member.role !== "Member" ? <Link className="ghost-button link-button" to={`/organizers/${member.userId}`}>Profili Aç</Link> : null}
-        {showMemberAction(member, "promote") ? <button className="mini-button" type="button" onClick={() => openRoleDialog({ type: "promote", member })}>Yönetici Yap</button> : null}
-        {showMemberAction(member, "demote") ? <button className="ghost-button" type="button" onClick={() => openRoleDialog({ type: "demote", member })}>Yetkiyi Kaldır</button> : null}
-        {showMemberAction(member, "transfer") ? <button className="ghost-button" type="button" onClick={() => openRoleDialog({ type: "transfer", member })}>Başkan Yap</button> : null}
-        {showMemberAction(member, "remove") ? <button className="ghost-button destructive-button" type="button" onClick={() => openRoleDialog({ type: "remove", member })}>Çıkar</button> : null}
-      </div>
-    </div>
-  );
 
   return (
     <div className="page-stack">
@@ -297,67 +187,38 @@ export function ClubDetailPage() {
           </div>
           <p>{clubData.showcaseSummary || clubData.description || "Kulüp açıklaması hazırlanıyor."}</p>
           <div className="inline-actions">
-            {user?.role === "Student" && !isMember ? <button className="primary-button" type="button" onClick={handleJoin}>Kulübe Katıl</button> : null}
+            {user ? (
+              <FollowButton
+                status={followStatus.data}
+                disabled={busyAction === "follow" || followStatus.loading}
+                onFollow={handleFollow}
+                onUnfollow={handleUnfollow}
+              />
+            ) : (
+              <Link className="primary-button link-button" to="/login">Takip Et</Link>
+            )}
             {user ? <button className="ghost-button" type="button" onClick={handleMessage}>Mesaj Gönder</button> : null}
             {clubData.instagramUrl ? <a className="ghost-button link-button" href={clubData.instagramUrl} target="_blank" rel="noreferrer">Instagram</a> : null}
             {user?.role === "Admin" ? <Link className="ghost-button link-button" to={`/clubs/${clubData.id}/edit`}>Düzenle</Link> : null}
-            {canDeleteClub ? (
-              <button className="ghost-button destructive-button" type="button" onClick={() => openRoleDialog({ type: "delete-club" })} disabled={busyAction === "delete-club-club"}>
-                {busyAction === "delete-club-club" ? "Siliniyor..." : "Kulübü Sil"}
-              </button>
-            ) : null}
+            {canDeleteClub ? <button className="ghost-button destructive-button" type="button" onClick={handleDeleteClub} disabled={busyAction === "delete-club"}>Kulübü Sil</button> : null}
           </div>
         </div>
       </section>
 
-      {(membersError || eventsError || statsError) ? (
-        <div className="notice-box">Kulübe ait bazı yardımcı bilgiler şu anda yüklenemedi. Temel kulüp içeriği görünmeye devam ediyor.</div>
-      ) : null}
+      {optionalError ? <div className="notice-box">Kulübe ait bazı yardımcı bilgiler şu anda yüklenemedi. Temel içerik görünmeye devam ediyor.</div> : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
-      <div className="two-column">
-        <SectionCard title="Kulüp Ekibi" description="Başkan, yöneticiler ve üyeler.">
-          <div className="team-section-stack">
-            <div className="team-section-block">
-              <div className="team-section-heading">
-                <span className="section-eyebrow">Başkan</span>
-                <h3>Kulüp Başkanı</h3>
-              </div>
-              {groupedMembers.president ? renderMemberRow(groupedMembers.president, true) : <EmptyState title="Başkan ataması bekleniyor." description="Kulübün birincil yöneticisi henüz tanımlanmadı." icon="Üy" />}
-            </div>
-
-            <div className="team-section-block">
-              <div className="team-section-heading">
-                <span className="section-eyebrow">Yöneticiler</span>
-                <h3>Yönetim Ekibi</h3>
-              </div>
-              {groupedMembers.assistants.length ? <div className="team-grid">{groupedMembers.assistants.map((member) => renderMemberRow(member))}</div> : <EmptyState title="Henüz yönetici yok." description="Yeni atamalar burada görünür." icon="Yn" />}
-            </div>
-
-            <div className="team-section-block">
-              <div className="team-section-heading">
-                <span className="section-eyebrow">Üyeler</span>
-                <h3>Topluluk Üyeleri</h3>
-              </div>
-              {groupedMembers.members.length ? <div className="team-grid">{groupedMembers.members.map((member) => renderMemberRow(member))}</div> : <EmptyState title="Henüz üye yok." description="Yeni katılımlar burada görünür." icon="Üy" />}
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Kulüp Özeti" description="Kısa görünüm.">
-          <div className="insight-grid single-column-grid">
-            <div className="insight-card">
-              <strong>{clubData.highlightTitle || "Kulüp Vizyonu"}</strong>
-              <span>{clubData.description || "Kulüp açıklaması hazırlanıyor."}</span>
-            </div>
-            <div className="insight-card">
-              <strong>Başkan</strong>
-              <span>{clubData.presidentName || "Tanımlanmadı"}{clubData.presidentEmail ? ` • ${clubData.presidentEmail}` : ""}</span>
-              {groupedMembers.president ? <Link className="ghost-button link-button" to={`/organizers/${groupedMembers.president.userId}`}>Organizatör Profili</Link> : null}
-            </div>
-          </div>
-        </SectionCard>
-      </div>
+      <ClubManagementSection
+        managers={managerList}
+        users={userList}
+        canManage={canManageTeam}
+        modalOpen={managerModalOpen}
+        loading={busyAction === "manager"}
+        onOpenModal={() => setManagerModalOpen(true)}
+        onCloseModal={() => setManagerModalOpen(false)}
+        onAssign={handleAddManager}
+        onRemove={setPendingRemoveManager}
+      />
 
       <SectionCard title="Etkinlikler" description="Kulübün etkinlik akışı.">
         {clubEvents.length ? (
@@ -371,67 +232,25 @@ export function ClubDetailPage() {
         )}
       </SectionCard>
 
-      <SectionCard title="Detaylar">
+      <SectionCard title="Kulüp Özeti">
         <div className="stat-grid club-detail-stats">
-          <StatCard title="Üye" value={displayedMemberCount} accent="teal" subtitle={statsData.academicYear || clubData.academicYear || "Anonim toplam"} />
-          <StatCard title="Etkinlik" value={statsData.eventCount} accent="blue" subtitle="Toplam üretim" />
-          <StatCard title="Katılım" value={statsData.totalRegistrations} accent="orange" subtitle="Etkinlik toplamı" />
-          <StatCard title="Kulüp Puanı" value={<RatingStars value={clubData.averageRating} reviewCount={clubData.reviewCount} compact />} accent="rose" subtitle="Etkinlik değerlendirmeleri" />
-        </div>
-        <div className="two-column">
-          <div className="stack-list">
-            <strong>Fakülte dağılımı</strong>
-            {facultyDistribution.length ? facultyDistribution.map(([name, count]) => (
-              <div key={name} className="list-row list-row-split"><span>{name}</span><strong>{count}</strong></div>
-            )) : <span>Anonim dağılım verisi yok.</span>}
-          </div>
-          <div className="stack-list">
-            <strong>Bölüm dağılımı</strong>
-            {departmentDistribution.length ? departmentDistribution.map(([name, count]) => (
-              <div key={name} className="list-row list-row-split"><span>{name}</span><strong>{count}</strong></div>
-            )) : <span>Anonim dağılım verisi yok.</span>}
-          </div>
+          <StatCard title="Takipçi" value={followStatus.data?.followerCount ?? clubData.memberCount ?? 0} accent="teal" subtitle="Bildirim alacak kullanıcı" />
+          <StatCard title="Etkinlik" value={statsData.eventCount || clubEvents.length} accent="blue" subtitle="Toplam üretim" />
+          <StatCard title="Katılım" value={statsData.totalRegistrations || 0} accent="orange" subtitle="Etkinlik toplamı" />
+          <StatCard title="Yönetici" value={managerList.length} accent="rose" subtitle="Yönetim ekibi" />
         </div>
       </SectionCard>
 
       <ConfirmDialog
-        open={Boolean(pendingDialog)}
-        tone={pendingDialog?.type === "delete-club" ? "danger" : "warning"}
-        title={
-          pendingDialog?.type === "promote"
-            ? "Yönetici yetkisi verilsin mi?"
-            : pendingDialog?.type === "demote"
-              ? "Yönetici yetkisi kaldırılsın mı?"
-              : pendingDialog?.type === "transfer"
-                ? "Başkanlık devredilsin mi?"
-                : pendingDialog?.type === "remove"
-                  ? "Üyelik kaldırılsın mı?"
-                  : "Kulüp silinsin mi?"
-        }
-        description={
-          pendingDialog?.type === "promote"
-            ? `${pendingDialog?.member?.userFullName} kulüp yöneticisi olacak.`
-            : pendingDialog?.type === "demote"
-              ? `${pendingDialog?.member?.userFullName} tekrar üye rolüne dönecek.`
-              : pendingDialog?.type === "transfer"
-                ? "Bu işlem kulübün birincil yöneticisini değiştirir. Eski başkan yönetici rolüne düşer."
-                : pendingDialog?.type === "remove"
-                  ? `${pendingDialog?.member?.userFullName} kulüp listesinden çıkarılacak.`
-                  : "Bu işlem geri alınamaz. Kulübe bağlı etkinlikler ve ilişkili kayıtlar da silinir."
-        }
-        confirmLabel={pendingDialog?.type === "transfer" ? "Başkanlığı Devret" : pendingDialog?.type === "delete-club" ? "Kulübü Sil" : "Onayla"}
-        confirmDisabled={dialogRequiresPhrase && confirmText.trim().toUpperCase() !== "DEVRET"}
-        loading={Boolean(busyAction)}
-        onCancel={closeDialog}
-        onConfirm={runMembershipAction}
-      >
-        {dialogRequiresPhrase ? (
-          <label className="confirm-dialog-field">
-            Onay için <strong>DEVRET</strong> yazın
-            <input value={confirmText} onChange={(event) => setConfirmText(event.target.value)} placeholder="DEVRET" />
-          </label>
-        ) : null}
-      </ConfirmDialog>
+        open={Boolean(pendingRemoveManager)}
+        tone="warning"
+        title="Yönetici silinsin mi?"
+        description={`${pendingRemoveManager?.userFullName || "Bu kişi"} yönetim ekibinden çıkarılacak.`}
+        confirmLabel="Yöneticiyi Sil"
+        loading={busyAction === "manager-remove"}
+        onCancel={() => setPendingRemoveManager(null)}
+        onConfirm={handleRemoveManager}
+      />
     </div>
   );
 }

@@ -28,7 +28,7 @@ public class HomeService : IHomeService
             .AsNoTracking()
             .Include(item => item.Events)
                 .ThenInclude(item => item.Reviews)
-            .Include(item => item.Memberships)
+            .Include(item => item.Followers)
             .ToList();
 
         var eventResponses = events.Select(EventService.MapEventResponse).ToList();

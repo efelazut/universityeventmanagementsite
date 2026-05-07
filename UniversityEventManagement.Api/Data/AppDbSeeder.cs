@@ -93,6 +93,7 @@ public static partial class AppDbSeeder
         dbContext.Clubs.AddRange(clubEntities);
         await dbContext.SaveChangesAsync();
         await EnsurePresentationUsersAsync(dbContext, clubEntities);
+        await EnsureClubTeamsAndFollowersAsync(dbContext, clubEntities);
 
         var clubByKey = clubEntities.ToDictionary(club => club.SourceKey, club => club);
         var eventEntities = new List<Event>();
@@ -264,6 +265,69 @@ public static partial class AppDbSeeder
         await dbContext.SaveChangesAsync();
     }
 
+    private static async Task EnsureClubTeamsAndFollowersAsync(AppDbContext dbContext, IReadOnlyList<Club> clubs)
+    {
+        if (clubs.Count == 0)
+        {
+            return;
+        }
+
+        var users = await dbContext.Users.ToListAsync();
+        var managerUsers = users.Where(user => user.Role == UserRoles.ClubManager).ToList();
+        var studentUsers = users.Where(user => user.Role == UserRoles.Student).ToList();
+
+        for (var index = 0; index < clubs.Count; index++)
+        {
+            var club = clubs[index];
+            var president = managerUsers.ElementAtOrDefault(index % Math.Max(managerUsers.Count, 1));
+            if (president is null)
+            {
+                continue;
+            }
+
+            if (!await dbContext.ClubManagers.AnyAsync(item => item.ClubId == club.Id && item.UserId == president.Id))
+            {
+                dbContext.ClubManagers.Add(new ClubManager
+                {
+                    ClubId = club.Id,
+                    UserId = president.Id,
+                    Role = "President"
+                });
+            }
+
+            president.Role = UserRoles.ClubManager;
+            president.ClubId = club.Id;
+            club.PresidentName = president.FullName;
+            club.PresidentEmail = president.Email;
+
+            var assistant = managerUsers.ElementAtOrDefault((index + 1) % Math.Max(managerUsers.Count, 1));
+            if (assistant is not null && assistant.Id != president.Id && !await dbContext.ClubManagers.AnyAsync(item => item.ClubId == club.Id && item.UserId == assistant.Id))
+            {
+                dbContext.ClubManagers.Add(new ClubManager
+                {
+                    ClubId = club.Id,
+                    UserId = assistant.Id,
+                    Role = "Manager"
+                });
+            }
+
+            foreach (var follower in studentUsers.Skip(index % Math.Max(studentUsers.Count, 1)).Take(3))
+            {
+                if (!await dbContext.ClubFollowers.AnyAsync(item => item.ClubId == club.Id && item.UserId == follower.Id))
+                {
+                    dbContext.ClubFollowers.Add(new ClubFollower
+                    {
+                        ClubId = club.Id,
+                        UserId = follower.Id,
+                        FollowedAt = DateTime.UtcNow.AddDays(-index)
+                    });
+                }
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
     private static async Task ReplaceDemoDataAsync(AppDbContext dbContext)
     {
         dbContext.EventReviews.RemoveRange(dbContext.EventReviews);
@@ -272,7 +336,8 @@ public static partial class AppDbSeeder
         dbContext.MessageThreadReadStates.RemoveRange(dbContext.MessageThreadReadStates);
         dbContext.Messages.RemoveRange(dbContext.Messages);
         dbContext.MessageThreads.RemoveRange(dbContext.MessageThreads);
-        dbContext.ClubMemberships.RemoveRange(dbContext.ClubMemberships);
+        dbContext.ClubFollowers.RemoveRange(dbContext.ClubFollowers);
+        dbContext.ClubManagers.RemoveRange(dbContext.ClubManagers);
         dbContext.Events.RemoveRange(dbContext.Events);
         dbContext.ClubStatistics.RemoveRange(dbContext.ClubStatistics);
         dbContext.Rooms.RemoveRange(dbContext.Rooms);

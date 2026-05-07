@@ -18,7 +18,8 @@ public class User
 
     public ICollection<Registration> Registrations { get; set; } = new List<Registration>();
     public ICollection<EventReview> Reviews { get; set; } = new List<EventReview>();
-    public ICollection<ClubMembership> ClubMemberships { get; set; } = new List<ClubMembership>();
+    public ICollection<ClubFollower> FollowedClubs { get; set; } = new List<ClubFollower>();
+    public ICollection<ClubManager> ManagedClubs { get; set; } = new List<ClubManager>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<MessageThread> StudentMessageThreads { get; set; } = new List<MessageThread>();

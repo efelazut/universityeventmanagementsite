@@ -243,7 +243,7 @@ export function StatisticsPage() {
       </div>
 
       <div className="two-column">
-        <SectionCard title="Kulüpler" description="Üretim ve aktif üyeler.">
+        <SectionCard title="Kulüpler" description="Üretim ve takip sinyalleri.">
           <div className="stack-list">
             {clubs.data.map((item) => (
               <div key={item.clubId} className="list-row list-row-split">
@@ -253,7 +253,7 @@ export function StatisticsPage() {
                 </div>
                 <div className="list-row-side">
                   <strong>{item.eventCount} etkinlik</strong>
-                  <span>{item.activeMemberCount} aktif üye</span>
+                  <span>{item.activeMemberCount} takip sinyali</span>
                 </div>
               </div>
             ))}

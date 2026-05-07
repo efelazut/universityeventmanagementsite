@@ -6686,3 +6686,177 @@ textarea:focus {
     font-size: 18px;
   }
 }
+
+/* Follow and club management */
+.follow-button {
+  gap: 10px;
+}
+
+.follow-button span {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.82;
+}
+
+.club-management-section {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(250, 244, 252, 0.9));
+  border: 1px solid rgba(118, 69, 137, 0.16);
+  box-shadow: 0 18px 46px rgba(48, 15, 67, 0.1);
+}
+
+.club-management-head,
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.club-management-head h2,
+.modal-header h2 {
+  margin: 0;
+}
+
+.manager-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.manager-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(118, 69, 137, 0.14);
+  box-shadow: 0 12px 30px rgba(48, 15, 67, 0.07);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.manager-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(48, 15, 67, 0.12);
+}
+
+.manager-avatar,
+.manager-search-row > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #5b1974, #8e2caf);
+  color: #fff;
+  font-weight: 900;
+}
+
+.manager-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.manager-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.manager-card-copy strong,
+.manager-card-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manager-card-copy span {
+  color: #725f7b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(25, 8, 38, 0.46);
+}
+
+.add-manager-modal {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(118, 69, 137, 0.18);
+  box-shadow: 0 26px 70px rgba(20, 5, 35, 0.32);
+}
+
+.manager-search-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.manager-search-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid rgba(118, 69, 137, 0.14);
+  border-radius: 16px;
+  padding: 10px;
+  background: rgba(250, 244, 252, 0.72);
+  cursor: pointer;
+}
+
+.manager-search-row.is-selected {
+  border-color: rgba(142, 44, 175, 0.46);
+  background: rgba(142, 44, 175, 0.12);
+}
+
+.manager-search-row div {
+  display: grid;
+  min-width: 0;
+}
+
+.manager-search-row small {
+  color: #725f7b;
+}
+
+@media (max-width: 768px) {
+  .club-management-section {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .club-management-head,
+  .modal-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .manager-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .manager-card > .pill,
+  .manager-card > button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

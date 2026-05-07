@@ -154,11 +154,8 @@ public class ClubService : IClubService
             _dbContext.MessageThreads.RemoveRange(threads);
         }
 
-        var memberships = _dbContext.ClubMemberships.Where(membership => membership.ClubId == id).ToList();
-        if (memberships.Count != 0)
-        {
-            _dbContext.ClubMemberships.RemoveRange(memberships);
-        }
+        _dbContext.ClubFollowers.RemoveRange(_dbContext.ClubFollowers.Where(follower => follower.ClubId == id));
+        _dbContext.ClubManagers.RemoveRange(_dbContext.ClubManagers.Where(manager => manager.ClubId == id));
 
         var linkedUsers = _dbContext.Users.Where(user => user.ClubId == id).ToList();
         foreach (var user in linkedUsers)
@@ -173,26 +170,6 @@ public class ClubService : IClubService
         _dbContext.Clubs.Remove(club);
         _dbContext.SaveChanges();
         return ServiceResult.Ok();
-    }
-
-    public ServiceResult<IReadOnlyList<ClubMembershipResponse>> GetMembers(int id)
-    {
-        if (!_dbContext.Clubs.Any(club => club.Id == id))
-        {
-            return ServiceResult<IReadOnlyList<ClubMembershipResponse>>.NotFound();
-        }
-
-        var members = _dbContext.ClubMemberships
-            .AsNoTracking()
-            .Include(membership => membership.User)
-            .Where(membership => membership.ClubId == id)
-            .OrderBy(membership => membership.Role == "President" ? 0 : membership.Role == "Assistant" ? 1 : 2)
-            .ThenBy(membership => membership.User!.FullName)
-            .ToList()
-            .Select(MapMembership)
-            .ToList();
-
-        return ServiceResult<IReadOnlyList<ClubMembershipResponse>>.Ok(members);
     }
 
     public ServiceResult<IReadOnlyList<EventResponse>> GetEvents(int id)
@@ -225,7 +202,6 @@ public class ClubService : IClubService
             return ServiceResult<ClubStatisticsResponse>.NotFound();
         }
 
-        var activeMemberCount = club.Memberships.Count(membership => membership.Status == "Active");
         var latestStatistic = club.Statistics.OrderByDescending(item => item.AcademicYear).FirstOrDefault();
         var eventCount = club.Events.Count;
         var allRegistrations = club.Events.SelectMany(@event => @event.Registrations).ToList();
@@ -234,7 +210,7 @@ public class ClubService : IClubService
         {
             ClubId = club.Id,
             ClubName = club.Name,
-            ActiveMemberCount = latestStatistic?.TotalMembers ?? club.ActualMemberCount ?? club.DeclaredMemberCount ?? activeMemberCount,
+            ActiveMemberCount = latestStatistic?.TotalMembers ?? club.ActualMemberCount ?? club.DeclaredMemberCount ?? club.Followers.Count,
             EventCount = eventCount,
             TotalRegistrations = allRegistrations.Count,
             TotalAttendance = club.Events.Sum(@event => @event.ParticipantCount ?? @event.ActualAttendanceCount),
@@ -247,283 +223,166 @@ public class ClubService : IClubService
         });
     }
 
-    public ServiceResult<ClubMembershipResponse> Join(int clubId, int currentUserId)
+    public ServiceResult<IReadOnlyList<ClubManagerResponse>> GetManagers(int id)
+    {
+        if (!_dbContext.Clubs.Any(club => club.Id == id))
+        {
+            return ServiceResult<IReadOnlyList<ClubManagerResponse>>.NotFound();
+        }
+
+        var managers = _dbContext.ClubManagers
+            .AsNoTracking()
+            .Include(manager => manager.User)
+            .Where(manager => manager.ClubId == id)
+            .OrderBy(manager => manager.Role == "President" ? 0 : 1)
+            .ThenBy(manager => manager.User!.FullName)
+            .ToList()
+            .Select(MapManager)
+            .ToList();
+
+        return ServiceResult<IReadOnlyList<ClubManagerResponse>>.Ok(managers);
+    }
+
+    public ServiceResult<ClubFollowStatusResponse> GetFollowStatus(int clubId, int currentUserId)
+    {
+        if (!_dbContext.Clubs.Any(club => club.Id == clubId))
+        {
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
+        }
+
+        return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
+    }
+
+    public ServiceResult<ClubFollowStatusResponse> Follow(int clubId, int currentUserId)
     {
         var club = _dbContext.Clubs.AsNoTracking().FirstOrDefault(item => item.Id == clubId);
         if (club is null)
         {
-            return ServiceResult<ClubMembershipResponse>.NotFound("Kulup bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
         }
 
-        var user = _dbContext.Users.FirstOrDefault(item => item.Id == currentUserId);
-        if (user is null)
+        if (!_dbContext.Users.Any(user => user.Id == currentUserId))
         {
-            return ServiceResult<ClubMembershipResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kullanici bulunamadi.");
         }
 
-        var existingMembership = _dbContext.ClubMemberships
-            .Include(membership => membership.User)
-            .FirstOrDefault(membership => membership.ClubId == clubId && membership.UserId == currentUserId);
-
-        if (existingMembership is not null)
+        var exists = _dbContext.ClubFollowers.Any(item => item.ClubId == clubId && item.UserId == currentUserId);
+        if (!exists)
         {
-            return ServiceResult<ClubMembershipResponse>.Conflict("Bu kulubun zaten bir uyesisiniz.");
+            _dbContext.ClubFollowers.Add(new ClubFollower
+            {
+                ClubId = clubId,
+                UserId = currentUserId,
+                FollowedAt = DateTime.UtcNow
+            });
+            _dbContext.SaveChanges();
+
+            _notificationService.CreateForUsers([currentUserId], "Kulup takip edildi", $"{club.Name} etkinlikleri icin bildirim alacaksiniz.", "Club", $"/clubs/{clubId}");
         }
 
-        var membership = new ClubMembership
-        {
-            ClubId = clubId,
-            UserId = currentUserId,
-            Role = "Member",
-            Status = "Active",
-            JoinedAt = DateTime.UtcNow
-        };
-
-        _dbContext.ClubMemberships.Add(membership);
-        _dbContext.SaveChanges();
-
-        _notificationService.CreateForUsers([currentUserId], "Kulube katildiniz", $"{club.Name} topluluguna uye oldunuz.", "Club", $"/clubs/{clubId}");
-
-        membership = _dbContext.ClubMemberships.Include(item => item.User).First(item => item.Id == membership.Id);
-        return ServiceResult<ClubMembershipResponse>.Created(MapMembership(membership));
+        return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
     }
 
-    public ServiceResult<ClubMembershipResponse> AssignOfficer(int clubId, ClubMembershipRequest request, int currentUserId, string currentUserRole)
+    public ServiceResult<ClubFollowStatusResponse> Unfollow(int clubId, int currentUserId)
     {
-        var actingLevel = GetManagementLevel(clubId, currentUserId, currentUserRole);
-        if (actingLevel == ClubManagementLevel.None || actingLevel == ClubManagementLevel.Member)
+        var follower = _dbContext.ClubFollowers.FirstOrDefault(item => item.ClubId == clubId && item.UserId == currentUserId);
+        if (follower is not null)
         {
-            return ServiceResult<ClubMembershipResponse>.Forbidden("Bu kulup icin yonetici atayamazsiniz.");
+            _dbContext.ClubFollowers.Remove(follower);
+            _dbContext.SaveChanges();
         }
 
-        var requestedRole = NormalizeMembershipRole(request.Role);
-        if (requestedRole == "President")
+        if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<ClubMembershipResponse>.Forbidden("Baskanlik atamasi ayri bir islem gerektirir.");
+            return ServiceResult<ClubFollowStatusResponse>.NotFound("Kulup bulunamadi.");
+        }
+
+        return ServiceResult<ClubFollowStatusResponse>.Ok(MapFollowStatus(clubId, currentUserId));
+    }
+
+    public ServiceResult<ClubManagerResponse> AddManager(int clubId, ClubManagerRequest request, int currentUserId, string currentUserRole)
+    {
+        if (!CanManageTeam(clubId, currentUserId, currentUserRole))
+        {
+            return ServiceResult<ClubManagerResponse>.Forbidden("Bu kulup icin yonetici ekleyemezsiniz.");
         }
 
         var user = _dbContext.Users.FirstOrDefault(item => item.Id == request.UserId);
         if (user is null)
         {
-            return ServiceResult<ClubMembershipResponse>.NotFound("Kullanici bulunamadi.");
+            return ServiceResult<ClubManagerResponse>.NotFound("Kullanici bulunamadi.");
         }
 
-        var membership = _dbContext.ClubMemberships.Include(item => item.User).FirstOrDefault(item => item.ClubId == clubId && item.UserId == request.UserId);
-        var currentRole = membership?.Role ?? "Member";
-
-        if (!CanChangeMembershipRole(actingLevel, currentUserId, request.UserId, currentRole, requestedRole))
+        if (!_dbContext.Clubs.Any(club => club.Id == clubId))
         {
-            return ServiceResult<ClubMembershipResponse>.Forbidden("Bu rol degisikligini yapamazsiniz.");
+            return ServiceResult<ClubManagerResponse>.NotFound("Kulup bulunamadi.");
         }
 
-        if (membership is null)
+        var normalizedRole = NormalizeManagerRole(request.Role);
+        var existing = _dbContext.ClubManagers.Include(item => item.User).FirstOrDefault(item => item.ClubId == clubId && item.UserId == request.UserId);
+        if (existing is not null)
         {
-            membership = new ClubMembership
-            {
-                ClubId = clubId,
-                UserId = request.UserId,
-                JoinedAt = DateTime.UtcNow,
-                Status = "Active",
-                Role = requestedRole
-            };
-            _dbContext.ClubMemberships.Add(membership);
-        }
-        else
-        {
-            membership.Role = requestedRole;
-            membership.Status = "Active";
+            return ServiceResult<ClubManagerResponse>.Conflict("Bu kullanici zaten yonetim ekibinde.");
         }
 
-        if (membership.Role != "Member")
+        var manager = new ClubManager
         {
-            user.Role = UserRoles.ClubManager;
-            user.ClubId = clubId;
-        }
-        else if (user.ClubId == clubId)
-        {
-            var hasAnotherManagerRole = _dbContext.ClubMemberships.Any(item =>
-                item.Id != membership.Id &&
-                item.ClubId == clubId &&
-                item.UserId == user.Id &&
-                item.Status == "Active" &&
-                item.Role != "Member");
+            ClubId = clubId,
+            UserId = request.UserId,
+            Role = normalizedRole
+        };
 
-            if (!hasAnotherManagerRole)
-            {
-                user.Role = UserRoles.Student;
-                user.ClubId = null;
-            }
-        }
-
+        _dbContext.ClubManagers.Add(manager);
+        user.Role = UserRoles.ClubManager;
+        user.ClubId = clubId;
         _dbContext.SaveChanges();
 
-        _notificationService.CreateForUsers([user.Id], "Kulup yetkiniz guncellendi", $"Kulup icindeki yeni rolnuz: {membership.Role}.", "Club", $"/clubs/{clubId}");
+        _notificationService.CreateForUsers([user.Id], "Kulup yonetimine eklendiniz", $"Yeni rolunuz: {ToDisplayManagerRole(normalizedRole)}.", "Club", $"/clubs/{clubId}");
 
-        membership = _dbContext.ClubMemberships.Include(item => item.User).First(item => item.Id == membership.Id);
-        return ServiceResult<ClubMembershipResponse>.Ok(MapMembership(membership));
+        manager = _dbContext.ClubManagers.Include(item => item.User).First(item => item.Id == manager.Id);
+        return ServiceResult<ClubManagerResponse>.Created(MapManager(manager));
     }
 
-    public ServiceResult RemoveMembership(int clubId, int membershipId, int currentUserId, string currentUserRole)
+    public ServiceResult RemoveManager(int clubId, int managerId, int currentUserId, string currentUserRole)
     {
-        var membership = _dbContext.ClubMemberships
-            .Include(item => item.User)
-            .FirstOrDefault(item => item.Id == membershipId && item.ClubId == clubId);
-
-        if (membership is null)
+        if (!CanManageTeam(clubId, currentUserId, currentUserRole))
         {
-            return ServiceResult.NotFound("Uyelik bulunamadi.");
+            return ServiceResult.Forbidden("Bu kulup icin yonetici silemezsiniz.");
         }
 
-        if (membership.Role == "President")
+        var manager = _dbContext.ClubManagers.Include(item => item.User).FirstOrDefault(item => item.Id == managerId && item.ClubId == clubId);
+        if (manager is null)
         {
-            return ServiceResult.Forbidden("Baskan kaydi bu islemle kaldirilamaz.");
+            return ServiceResult.NotFound("Yonetici kaydi bulunamadi.");
         }
 
-        var actingLevel = GetManagementLevel(clubId, currentUserId, currentUserRole);
-        if (!CanRemoveMembership(actingLevel, membership.Role))
+        if (manager.Role == "President")
         {
-            return ServiceResult.Forbidden("Bu uye kaydini kaldiramazsiniz.");
+            return ServiceResult.Forbidden("Baskan bu islemle silinemez.");
         }
 
-        _dbContext.ClubMemberships.Remove(membership);
+        var user = manager.User;
+        _dbContext.ClubManagers.Remove(manager);
 
-        if (membership.User is not null && membership.User.ClubId == clubId && membership.User.Role == UserRoles.ClubManager)
+        if (user is not null && user.ClubId == clubId && !_dbContext.ClubManagers.Any(item => item.Id != managerId && item.UserId == user.Id))
         {
-            membership.User.Role = UserRoles.Student;
-            membership.User.ClubId = null;
+            user.Role = UserRoles.Student;
+            user.ClubId = null;
         }
 
         _dbContext.SaveChanges();
         return ServiceResult.Ok();
     }
 
-    public ServiceResult<ClubResponse> AssignPresident(int clubId, int userId, int currentUserId, string currentUserRole)
-    {
-        var club = _dbContext.Clubs.FirstOrDefault(item => item.Id == clubId);
-        if (club is null)
-        {
-            return ServiceResult<ClubResponse>.NotFound("Kulup bulunamadi.");
-        }
-
-        var actingLevel = GetManagementLevel(clubId, currentUserId, currentUserRole);
-        if (actingLevel != ClubManagementLevel.Admin && actingLevel != ClubManagementLevel.President)
-        {
-            return ServiceResult<ClubResponse>.Forbidden("Bu kulup icin baskanlik devri yapamazsiniz.");
-        }
-
-        var user = _dbContext.Users.FirstOrDefault(item => item.Id == userId);
-        if (user is null)
-        {
-            return ServiceResult<ClubResponse>.NotFound("Kullanici bulunamadi.");
-        }
-
-        var previousPresident = _dbContext.ClubMemberships.FirstOrDefault(item => item.ClubId == clubId && item.Role == "President");
-        if (previousPresident is not null)
-        {
-            previousPresident.Role = "Assistant";
-        }
-
-        var membership = _dbContext.ClubMemberships.FirstOrDefault(item => item.ClubId == clubId && item.UserId == userId);
-        if (membership is null)
-        {
-            membership = new ClubMembership
-            {
-                ClubId = clubId,
-                UserId = userId,
-                JoinedAt = DateTime.UtcNow,
-                Status = "Active",
-                Role = "President"
-            };
-            _dbContext.ClubMemberships.Add(membership);
-        }
-        else
-        {
-            membership.Role = "President";
-            membership.Status = "Active";
-        }
-
-        user.Role = UserRoles.ClubManager;
-        user.ClubId = clubId;
-        club.PresidentName = user.FullName;
-        club.PresidentEmail = user.Email;
-
-        _dbContext.SaveChanges();
-
-        _notificationService.CreateForUsers([userId], "Kulup baskanligi atamasi", $"{club.Name} kulubunun baskani olarak atandiniz.", "Club", $"/clubs/{clubId}");
-
-        return ServiceResult<ClubResponse>.Ok(MapClubResponse(QueryClubs().First(item => item.Id == clubId)));
-    }
-
-    private ClubManagementLevel GetManagementLevel(int clubId, int currentUserId, string currentUserRole)
+    private bool CanManageTeam(int clubId, int currentUserId, string currentUserRole)
     {
         if (string.Equals(currentUserRole, UserRoles.Admin, StringComparison.OrdinalIgnoreCase))
-        {
-            return ClubManagementLevel.Admin;
-        }
-
-        var membershipRole = _dbContext.ClubMemberships
-            .AsNoTracking()
-            .Where(item => item.ClubId == clubId && item.UserId == currentUserId && item.Status == "Active")
-            .Select(item => item.Role)
-            .FirstOrDefault();
-
-        return membershipRole switch
-        {
-            "President" => ClubManagementLevel.President,
-            "Assistant" => ClubManagementLevel.Assistant,
-            "Member" => ClubManagementLevel.Member,
-            _ => ClubManagementLevel.None
-        };
-    }
-
-    private bool CanManageClub(int clubId, int currentUserId, string currentUserRole)
-    {
-        if (string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        if (!string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return _dbContext.ClubMemberships.Any(item =>
-            item.ClubId == clubId &&
-            item.UserId == currentUserId &&
-            item.Status == "Active" &&
-            item.Role == "President");
-    }
-
-    private static bool CanChangeMembershipRole(ClubManagementLevel actingLevel, int currentUserId, int targetUserId, string currentRole, string requestedRole)
-    {
-        if (actingLevel == ClubManagementLevel.Admin)
-        {
-            return currentRole != "President" || requestedRole == "President";
-        }
-
-        if (currentUserId == targetUserId)
-        {
-            return false;
-        }
-
-        return actingLevel switch
-        {
-            ClubManagementLevel.President => currentRole != "President",
-            ClubManagementLevel.Assistant => currentRole == "Member" && requestedRole == "Assistant",
-            _ => false
-        };
-    }
-
-    private static bool CanRemoveMembership(ClubManagementLevel actingLevel, string membershipRole)
-    {
-        return actingLevel switch
-        {
-            ClubManagementLevel.Admin => membershipRole != "President",
-            ClubManagementLevel.President => membershipRole != "President",
-            ClubManagementLevel.Assistant => membershipRole == "Member",
-            _ => false
-        };
+        return string.Equals(currentUserRole, UserRoles.ClubManager, StringComparison.OrdinalIgnoreCase)
+            && _dbContext.ClubManagers.Any(item => item.ClubId == clubId && item.UserId == currentUserId && item.Role == "President");
     }
 
     private bool CanDeleteClub(int clubId, int currentUserId, string currentUserRole)
@@ -538,26 +397,10 @@ public class ClubService : IClubService
             return false;
         }
 
-        return _dbContext.ClubMemberships.Any(item =>
+        return _dbContext.ClubManagers.Any(item =>
             item.ClubId == clubId &&
             item.UserId == currentUserId &&
-            item.Status == "Active" &&
             item.Role == "President");
-    }
-
-    private static string NormalizeMembershipRole(string? role)
-    {
-        if (string.Equals(role, "President", StringComparison.OrdinalIgnoreCase))
-        {
-            return "President";
-        }
-
-        if (string.Equals(role, "Assistant", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Assistant";
-        }
-
-        return "Member";
     }
 
     private IQueryable<Club> QueryClubs() => _dbContext.Clubs
@@ -566,13 +409,12 @@ public class ClubService : IClubService
             .ThenInclude(@event => @event.Reviews)
         .Include(club => club.Events)
             .ThenInclude(@event => @event.Registrations)
-        .Include(club => club.Memberships)
-        .Include(club => club.Members)
+        .Include(club => club.Followers)
+        .Include(club => club.Managers)
         .Include(club => club.Statistics);
 
     internal static ClubResponse MapClubResponse(Club club)
     {
-        var activeMemberships = club.Memberships.Where(item => item.Status == "Active").ToList();
         var allReviews = club.Events.SelectMany(@event => @event.Reviews).ToList();
 
         return new ClubResponse
@@ -594,7 +436,7 @@ public class ClubService : IClubService
             AcademicYear = club.AcademicYear,
             LogoUrl = club.LogoUrl,
             IsActive = club.IsActive,
-            MemberCount = club.ActualMemberCount ?? club.DeclaredMemberCount ?? (activeMemberships.Count != 0 ? activeMemberships.Count : club.Members.Count),
+            MemberCount = club.Followers.Count,
             AverageRating = allReviews.Count == 0 ? 0 : allReviews.Average(review => review.Rating),
             ReviewCount = allReviews.Count,
             RecentEventTitles = club.Events
@@ -605,29 +447,33 @@ public class ClubService : IClubService
         };
     }
 
-    private static ClubMembershipResponse MapMembership(ClubMembership membership) => new()
+    private ClubFollowStatusResponse MapFollowStatus(int clubId, int currentUserId) => new()
     {
-        Id = membership.Id,
-        ClubId = membership.ClubId,
-        UserId = membership.UserId,
-        UserFullName = membership.User?.FullName ?? string.Empty,
-        UserEmail = membership.User?.Email ?? string.Empty,
-        Role = membership.Role,
-        Status = membership.Status,
-        JoinedAt = membership.JoinedAt
+        ClubId = clubId,
+        IsFollowing = _dbContext.ClubFollowers.Any(item => item.ClubId == clubId && item.UserId == currentUserId),
+        FollowerCount = _dbContext.ClubFollowers.Count(item => item.ClubId == clubId)
     };
+
+    private static ClubManagerResponse MapManager(ClubManager manager) => new()
+    {
+        Id = manager.Id,
+        ClubId = manager.ClubId,
+        UserId = manager.UserId,
+        UserFullName = manager.User?.FullName ?? string.Empty,
+        UserEmail = manager.User?.Email ?? string.Empty,
+        AvatarUrl = manager.User?.AvatarUrl ?? string.Empty,
+        Role = manager.Role
+    };
+
+    private static string NormalizeManagerRole(string? role) =>
+        string.Equals(role, "President", StringComparison.OrdinalIgnoreCase) ? "President" : "Manager";
+
+    private static string ToDisplayManagerRole(string role) =>
+        role == "President" ? "Baskan" : "Yonetici";
 
     private static IReadOnlyDictionary<string, int> ParseDistribution(string? json) =>
         string.IsNullOrWhiteSpace(json)
             ? new Dictionary<string, int>()
             : JsonSerializer.Deserialize<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
 
-    private enum ClubManagementLevel
-    {
-        None,
-        Member,
-        Assistant,
-        President,
-        Admin
-    }
 }

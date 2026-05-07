@@ -119,7 +119,7 @@ export function HomePage() {
                 <p className="club-card-desc line-clamp-2">{club.showcaseSummary || club.description}</p>
                 <div className="club-card-footer">
                   <div className="club-meta">
-                    <strong>{club.memberCount} Üye</strong>
+                    <strong>{club.memberCount} takipçi</strong>
                   </div>
                   <Link className="ghost-button link-button" to={`/clubs/${club.id}`}>
                     Detay

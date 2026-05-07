@@ -25,7 +25,8 @@ export const markAttendance = (eventId, userId, token, baseUrl) =>
   apiRequest(`/api/Events/${eventId}/attendance/${userId}`, { method: "POST", token, baseUrl });
 
 export const fetchClubById = (id, baseUrl) => apiRequest(`/api/Clubs/${id}`, { baseUrl });
-export const fetchClubMembers = (id, baseUrl) => apiRequest(`/api/Clubs/${id}/members`, { baseUrl });
+export const fetchClubManagers = (id, baseUrl) => apiRequest(`/api/Clubs/${id}/managers`, { baseUrl });
+export const fetchClubFollowStatus = (id, token, baseUrl) => apiRequest(`/api/Clubs/${id}/follow`, { token, baseUrl });
 export const fetchClubEvents = (id, baseUrl) => apiRequest(`/api/Clubs/${id}/events`, { baseUrl });
 export const fetchClubStatistics = (id, baseUrl) => apiRequest(`/api/Clubs/${id}/statistics`, { baseUrl });
 export const createClub = (payload, token, baseUrl) =>
@@ -34,14 +35,14 @@ export const updateClub = (id, payload, token, baseUrl) =>
   apiRequest(`/api/Clubs/${id}`, { method: "PUT", body: payload, token, baseUrl });
 export const deleteClub = (id, token, baseUrl) =>
   apiRequest(`/api/Clubs/${id}`, { method: "DELETE", token, baseUrl });
-export const joinClub = (id, token, baseUrl) =>
-  apiRequest(`/api/Clubs/${id}/join`, { method: "POST", token, baseUrl });
-export const assignClubOfficer = (id, payload, token, baseUrl) =>
-  apiRequest(`/api/Clubs/${id}/officers`, { method: "POST", body: payload, token, baseUrl });
-export const removeClubMembership = (clubId, membershipId, token, baseUrl) =>
-  apiRequest(`/api/Clubs/${clubId}/members/${membershipId}`, { method: "DELETE", token, baseUrl });
-export const assignClubPresident = (clubId, userId, token, baseUrl) =>
-  apiRequest(`/api/Clubs/${clubId}/president/${userId}`, { method: "POST", token, baseUrl });
+export const followClub = (id, token, baseUrl) =>
+  apiRequest(`/api/Clubs/${id}/follow`, { method: "POST", token, baseUrl });
+export const unfollowClub = (id, token, baseUrl) =>
+  apiRequest(`/api/Clubs/${id}/follow`, { method: "DELETE", token, baseUrl });
+export const addClubManager = (id, payload, token, baseUrl) =>
+  apiRequest(`/api/Clubs/${id}/managers`, { method: "POST", body: payload, token, baseUrl });
+export const removeClubManager = (clubId, managerId, token, baseUrl) =>
+  apiRequest(`/api/Clubs/${clubId}/managers/${managerId}`, { method: "DELETE", token, baseUrl });
 
 export const fetchRooms = (baseUrl) => apiRequest("/api/Rooms", { baseUrl });
 export const fetchRoomById = (id, baseUrl) => apiRequest(`/api/Rooms/${id}`, { baseUrl });
@@ -63,6 +64,7 @@ export const uploadImage = (file, category, token, baseUrl) => {
 export const fetchMyProfile = (token, baseUrl) => apiRequest("/api/Users/me", { token, baseUrl });
 export const fetchMyEvents = (token, baseUrl) => apiRequest("/api/Users/me/events", { token, baseUrl });
 export const fetchOrganizerProfile = (id, baseUrl) => apiRequest(`/api/Users/${id}/organizer-profile`, { baseUrl });
+export const fetchUsers = (baseUrl) => apiRequest("/api/Users", { baseUrl });
 
 export const fetchEventReviews = (eventId, baseUrl) => apiRequest(`/api/events/${eventId}/reviews`, { baseUrl });
 export const createEventReview = (eventId, payload, token, baseUrl) =>

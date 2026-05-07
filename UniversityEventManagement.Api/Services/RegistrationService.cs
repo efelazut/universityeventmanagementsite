@@ -98,10 +98,10 @@ public class RegistrationService : IRegistrationService
 
         if (@event.RequiresApproval)
         {
-            var recipientIds = _dbContext.ClubMemberships
+            var recipientIds = _dbContext.ClubManagers
                 .AsNoTracking()
-                .Where(membership => membership.ClubId == @event.ClubId && membership.Status == "Active" && membership.Role != "Member")
-                .Select(membership => membership.UserId)
+                .Where(manager => manager.ClubId == @event.ClubId)
+                .Select(manager => manager.UserId)
                 .ToList();
 
             _notificationService.CreateForUsers(recipientIds, "Yeni katilim basvurusu", $"{user.FullName}, {@event.Title} icin basvuru gonderdi.", "Registration", $"/events/{@event.Id}");

@@ -81,7 +81,7 @@ export function ProfilePage() {
             <strong>{roleLabel(profile.role)}</strong>
             <p>{profile.email}</p>
             <span className={`pill ${profile.isActiveMember ? "active" : "inactive"}`}>
-              {profile.isActiveMember ? "Aktif üye" : "Pasif üye"}
+              {profile.isActiveMember ? "Aktif kullanıcı" : "Pasif kullanıcı"}
             </span>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function ProfilePage() {
             <div><span>Ad soyad</span><strong>{profile.fullName}</strong></div>
             <div><span>E-posta</span><strong>{profile.email}</strong></div>
             <div><span>Rol</span><strong>{roleLabel(profile.role)}</strong></div>
-            <div><span>Üyelik durumu</span><strong>{profile.isActiveMember ? "Aktif" : "Pasif"}</strong></div>
+            <div><span>Hesap durumu</span><strong>{profile.isActiveMember ? "Aktif" : "Pasif"}</strong></div>
           </div>
         </SectionCard>
 
@@ -113,10 +113,10 @@ export function ProfilePage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Kulüp üyeliğim" description="Sistemdeki kulüp ilişkiniz ve yetki kapsamınız.">
+        <SectionCard title="Kulüp ilişkim" description="Sistemdeki kulüp bağınız ve yetki kapsamınız.">
           <div className="detail-table">
             <div><span>Bağlı kulüp</span><strong>{profile.clubName || "Kulüp bağlantısı yok"}</strong></div>
-            <div><span>Üyelik tipi</span><strong>{profile.clubName ? "Kulüp üyesi" : "Bağımsız kullanıcı"}</strong></div>
+            <div><span>İlişki tipi</span><strong>{profile.clubName ? "Yönetim ekibi" : "Bağımsız kullanıcı"}</strong></div>
             <div><span>Yetki alanı</span><strong>{profile.role === "Admin" ? "Tüm platform" : "Rol bazlı erişim"}</strong></div>
           </div>
         </SectionCard>

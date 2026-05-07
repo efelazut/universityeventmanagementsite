@@ -22,8 +22,8 @@ public class Club
     public bool IsActive { get; set; }
 
     public ICollection<Event> Events { get; set; } = new List<Event>();
-    public ICollection<User> Members { get; set; } = new List<User>();
-    public ICollection<ClubMembership> Memberships { get; set; } = new List<ClubMembership>();
+    public ICollection<ClubFollower> Followers { get; set; } = new List<ClubFollower>();
+    public ICollection<ClubManager> Managers { get; set; } = new List<ClubManager>();
     public ICollection<MessageThread> MessageThreads { get; set; } = new List<MessageThread>();
     public ICollection<ClubStatistic> Statistics { get; set; } = new List<ClubStatistic>();
 }

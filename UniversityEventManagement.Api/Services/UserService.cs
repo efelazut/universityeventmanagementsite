@@ -194,8 +194,8 @@ public class UserService : IUserService
         var user = _dbContext.Users
             .AsNoTracking()
             .Include(item => item.Club)
-            .Include(item => item.ClubMemberships)
-                .ThenInclude(membership => membership.Club)
+            .Include(item => item.ManagedClubs)
+                .ThenInclude(manager => manager.Club)
             .FirstOrDefault(item => item.Id == id);
 
         if (user is null)
@@ -203,9 +203,8 @@ public class UserService : IUserService
             return ServiceResult<OrganizerProfileResponse>.NotFound("Yönetici bulunamadı.");
         }
 
-        var managedClubIds = user.ClubMemberships
-            .Where(membership => membership.Status == "Active" && membership.Role != "Member")
-            .Select(membership => membership.ClubId)
+        var managedClubIds = user.ManagedClubs
+            .Select(manager => manager.ClubId)
             .Distinct()
             .ToList();
 
@@ -231,11 +230,10 @@ public class UserService : IUserService
             Email = user.Email,
             AvatarUrl = user.AvatarUrl,
             Bio = user.Bio,
-            PrimaryClubName = user.Club?.Name ?? user.ClubMemberships.FirstOrDefault()?.Club?.Name ?? "Kulüp bilgisi yok",
-            PrimaryClubCategory = user.Club?.Category ?? user.ClubMemberships.FirstOrDefault()?.Club?.Category ?? string.Empty,
-            ManagedClubNames = user.ClubMemberships
-                .Where(membership => membership.Status == "Active" && membership.Role != "Member")
-                .Select(membership => membership.Club?.Name ?? string.Empty)
+            PrimaryClubName = user.Club?.Name ?? user.ManagedClubs.FirstOrDefault()?.Club?.Name ?? "Kulüp bilgisi yok",
+            PrimaryClubCategory = user.Club?.Category ?? user.ManagedClubs.FirstOrDefault()?.Club?.Category ?? string.Empty,
+            ManagedClubNames = user.ManagedClubs
+                .Select(manager => manager.Club?.Name ?? string.Empty)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct()
                 .ToList(),

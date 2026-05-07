@@ -16,7 +16,8 @@ public class AppDbContext : DbContext
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Registration> Registrations => Set<Registration>();
     public DbSet<EventReview> EventReviews => Set<EventReview>();
-    public DbSet<ClubMembership> ClubMemberships => Set<ClubMembership>();
+    public DbSet<ClubFollower> ClubFollowers => Set<ClubFollower>();
+    public DbSet<ClubManager> ClubManagers => Set<ClubManager>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<MessageThread> MessageThreads => Set<MessageThread>();
     public DbSet<Message> Messages => Set<Message>();
@@ -74,7 +75,7 @@ public class AppDbContext : DbContext
                 .IsUnique();
 
             entity.HasOne(user => user.Club)
-                .WithMany(club => club.Members)
+                .WithMany()
                 .HasForeignKey(user => user.ClubId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
@@ -315,30 +316,44 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<ClubMembership>(entity =>
+        modelBuilder.Entity<ClubFollower>(entity =>
         {
-            entity.ToTable("ClubMemberships");
+            entity.ToTable("ClubFollowers");
 
-            entity.Property(membership => membership.Role)
-                .HasMaxLength(40)
-                .IsRequired();
-
-            entity.Property(membership => membership.Status)
-                .HasMaxLength(40)
-                .IsRequired();
-
-            entity.HasIndex(membership => new { membership.ClubId, membership.UserId })
+            entity.HasIndex(follower => new { follower.ClubId, follower.UserId })
                 .IsUnique();
 
-            entity.HasOne(membership => membership.Club)
-                .WithMany(club => club.Memberships)
-                .HasForeignKey(membership => membership.ClubId)
-                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(follower => follower.Club)
+                .WithMany(club => club.Followers)
+                .HasForeignKey(follower => follower.ClubId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(membership => membership.User)
-                .WithMany(user => user.ClubMemberships)
-                .HasForeignKey(membership => membership.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(follower => follower.User)
+                .WithMany(user => user.FollowedClubs)
+                .HasForeignKey(follower => follower.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ClubManager>(entity =>
+        {
+            entity.ToTable("ClubManagers");
+
+            entity.Property(manager => manager.Role)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.HasIndex(manager => new { manager.ClubId, manager.UserId })
+                .IsUnique();
+
+            entity.HasOne(manager => manager.Club)
+                .WithMany(club => club.Managers)
+                .HasForeignKey(manager => manager.ClubId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(manager => manager.User)
+                .WithMany(user => user.ManagedClubs)
+                .HasForeignKey(manager => manager.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Notification>(entity =>

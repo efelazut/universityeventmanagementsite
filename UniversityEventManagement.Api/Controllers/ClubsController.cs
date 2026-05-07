@@ -69,10 +69,40 @@ public class ClubsController : ControllerBase
     }
 
     [AllowAnonymous]
-    [HttpGet("{id:int}/members")]
-    public ActionResult<IReadOnlyList<ClubMembershipResponse>> GetMembers(int id)
+    [HttpGet("{id:int}/managers")]
+    public ActionResult<IReadOnlyList<ClubManagerResponse>> GetManagers(int id)
     {
-        return this.ToActionResult(_clubService.GetMembers(id));
+        return this.ToActionResult(_clubService.GetManagers(id));
+    }
+
+    [Authorize]
+    [HttpGet("{id:int}/follow")]
+    public ActionResult<ClubFollowStatusResponse> GetFollowStatus(int id)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userIdClaim, out var currentUserId)
+            ? this.ToActionResult(_clubService.GetFollowStatus(id, currentUserId))
+            : Unauthorized();
+    }
+
+    [Authorize]
+    [HttpPost("{id:int}/follow")]
+    public ActionResult<ClubFollowStatusResponse> Follow(int id)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userIdClaim, out var currentUserId)
+            ? this.ToActionResult(_clubService.Follow(id, currentUserId))
+            : Unauthorized();
+    }
+
+    [Authorize]
+    [HttpDelete("{id:int}/follow")]
+    public ActionResult<ClubFollowStatusResponse> Unfollow(int id)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userIdClaim, out var currentUserId)
+            ? this.ToActionResult(_clubService.Unfollow(id, currentUserId))
+            : Unauthorized();
     }
 
     [AllowAnonymous]
@@ -92,47 +122,25 @@ public class ClubsController : ControllerBase
         return this.ToActionResult(_clubService.GetStatistics(id));
     }
 
-    [Authorize]
-    [HttpPost("{id:int}/join")]
-    public ActionResult<ClubMembershipResponse> Join(int id)
-    {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(userIdClaim, out var currentUserId)
-            ? this.ToActionResult(_clubService.Join(id, currentUserId))
-            : Unauthorized();
-    }
-
     [Authorize(Roles = "Admin,ClubManager")]
-    [HttpPost("{id:int}/officers")]
-    public ActionResult<ClubMembershipResponse> AssignOfficer(int id, [FromBody] ClubMembershipRequest request)
+    [HttpPost("{id:int}/managers")]
+    public ActionResult<ClubManagerResponse> AddManager(int id, [FromBody] ClubManagerRequest request)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var role = User.FindFirstValue(ClaimTypes.Role);
         return int.TryParse(userIdClaim, out var currentUserId) && !string.IsNullOrWhiteSpace(role)
-            ? this.ToActionResult(_clubService.AssignOfficer(id, request, currentUserId, role))
+            ? this.ToActionResult(_clubService.AddManager(id, request, currentUserId, role))
             : Unauthorized();
     }
 
     [Authorize(Roles = "Admin,ClubManager")]
-    [HttpDelete("{id:int}/members/{membershipId:int}")]
-    public IActionResult RemoveMembership(int id, int membershipId)
+    [HttpDelete("{id:int}/managers/{managerId:int}")]
+    public IActionResult RemoveManager(int id, int managerId)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var role = User.FindFirstValue(ClaimTypes.Role);
         return int.TryParse(userIdClaim, out var currentUserId) && !string.IsNullOrWhiteSpace(role)
-            ? this.ToActionResult(_clubService.RemoveMembership(id, membershipId, currentUserId, role))
-            : Unauthorized();
-    }
-
-    [Authorize(Roles = "Admin,ClubManager")]
-    [HttpPost("{id:int}/president/{userId:int}")]
-    public ActionResult<ClubResponse> AssignPresident(int id, int userId)
-    {
-        var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var currentUserRole = User.FindFirstValue(ClaimTypes.Role);
-
-        return int.TryParse(currentUserIdClaim, out var currentUserId) && !string.IsNullOrWhiteSpace(currentUserRole)
-            ? this.ToActionResult(_clubService.AssignPresident(id, userId, currentUserId, currentUserRole))
+            ? this.ToActionResult(_clubService.RemoveManager(id, managerId, currentUserId, role))
             : Unauthorized();
     }
 

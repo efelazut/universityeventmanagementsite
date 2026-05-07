@@ -78,10 +78,10 @@ public class EventService : IEventService
         _dbContext.Events.Add(createdEvent);
         _dbContext.SaveChanges();
 
-        var recipientIds = _dbContext.ClubMemberships
+        var recipientIds = _dbContext.ClubFollowers
             .AsNoTracking()
-            .Where(membership => membership.ClubId == createdEvent.ClubId && membership.Status == "Active" && membership.Role == "Member")
-            .Select(membership => membership.UserId)
+            .Where(follower => follower.ClubId == createdEvent.ClubId)
+            .Select(follower => follower.UserId)
             .ToList();
 
         _notificationService.CreateForUsers(recipientIds, "Yeni etkinlik yayinda", $"{createdEvent.Title} etkinligi kulup takvimine eklendi.", "Event", $"/events/{createdEvent.Id}");
@@ -320,7 +320,7 @@ public class EventService : IEventService
             : null;
     }
 
-    private static bool CanManageEvent(User currentUser, Event @event, string currentUserRole)
+    private bool CanManageEvent(User currentUser, Event @event, string currentUserRole)
     {
         if (string.Equals(currentUserRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
@@ -328,11 +328,11 @@ public class EventService : IEventService
         }
 
         return string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase)
-            && currentUser.ClubId.HasValue
-            && currentUser.ClubId.Value == @event.ClubId;
+            && @event.ClubId.HasValue
+            && _dbContext.ClubManagers.Any(manager => manager.ClubId == @event.ClubId.Value && manager.UserId == currentUser.Id);
     }
 
-    private static int? ResolveClubIdForWrite(int? requestedClubId, User currentUser)
+    private int? ResolveClubIdForWrite(int? requestedClubId, User currentUser)
     {
         if (string.Equals(currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
@@ -344,7 +344,15 @@ public class EventService : IEventService
             return null;
         }
 
-        return currentUser.ClubId;
+        if (requestedClubId.HasValue && _dbContext.ClubManagers.Any(manager => manager.ClubId == requestedClubId.Value && manager.UserId == currentUser.Id))
+        {
+            return requestedClubId.Value;
+        }
+
+        return currentUser.ClubId.HasValue
+            && _dbContext.ClubManagers.Any(manager => manager.ClubId == currentUser.ClubId.Value && manager.UserId == currentUser.Id)
+                ? currentUser.ClubId
+                : null;
     }
 
     private (User? User, ServiceResult<EventResponse>? Error) GetAuthorizedUser(int currentUserId, string currentUserRole)
@@ -360,7 +368,8 @@ public class EventService : IEventService
             return (null, ServiceResult<EventResponse>.Unauthorized("Kullanici rolu dogrulanamadi."));
         }
 
-        if (string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase) && !currentUser.ClubId.HasValue)
+        if (string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase)
+            && !_dbContext.ClubManagers.Any(manager => manager.UserId == currentUserId))
         {
             return (null, ServiceResult<EventResponse>.Forbidden("Kulup yoneticisinin bagli oldugu bir kulup olmalidir."));
         }

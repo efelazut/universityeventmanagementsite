@@ -101,10 +101,10 @@ public class MessageService : IMessageService
         UpsertReadState(thread.Id, currentUserId, DateTime.UtcNow);
         _dbContext.SaveChanges();
 
-        var recipientIds = _dbContext.ClubMemberships
+        var recipientIds = _dbContext.ClubManagers
             .AsNoTracking()
-            .Where(membership => membership.ClubId == request.ClubId && membership.Status == "Active" && membership.Role != "Member")
-            .Select(membership => membership.UserId)
+            .Where(manager => manager.ClubId == request.ClubId)
+            .Select(manager => manager.UserId)
             .ToList();
 
         _notificationService.CreateForUsers(recipientIds, "Yeni kulup mesaji", $"{club.Name} icin yeni bir sohbet baslatildi.", "Message", $"/messages?thread={thread.Id}");
@@ -140,10 +140,10 @@ public class MessageService : IMessageService
         _dbContext.SaveChanges();
 
         var recipientIds = string.Equals(currentUserRole, "Student", StringComparison.OrdinalIgnoreCase)
-            ? _dbContext.ClubMemberships
+            ? _dbContext.ClubManagers
                 .AsNoTracking()
-                .Where(membership => membership.ClubId == thread.ClubId && membership.Status == "Active" && membership.Role != "Member")
-                .Select(membership => membership.UserId)
+                .Where(manager => manager.ClubId == thread.ClubId)
+                .Select(manager => manager.UserId)
                 .ToList()
             : [thread.StudentId];
 
