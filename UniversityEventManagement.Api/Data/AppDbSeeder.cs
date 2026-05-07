@@ -298,11 +298,14 @@ public static partial class AppDbSeeder
     {
         if (DateTime.TryParse(seed.Date, out var parsed))
         {
-            return parsed.Date.AddHours(12);
+            return UtcDate(parsed.Year, parsed.Month, parsed.Day, 12);
         }
 
-        return new DateTime(seed.SourceYear ?? DateTime.UtcNow.Year, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        return UtcDate(seed.SourceYear ?? DateTime.UtcNow.Year, 1, 1, 12);
     }
+
+    private static DateTime UtcDate(int year, int month, int day, int hour = 0, int minute = 0) =>
+        new(year, month, day, hour, minute, 0, DateTimeKind.Utc);
 
     private static string CleanClubName(string? value)
     {
