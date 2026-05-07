@@ -84,8 +84,8 @@ export function Layout({ children }) {
         <div className="navbar-container">
           <div className="navbar-left">
             <Link to="/home" className="brand brand-header">
-              <img className="brand-logo" src="/logo.png" alt="UniConnect" />
-              <strong>UniConnect</strong>
+              <img className="brand-logo" src="/logo-navbar.png" alt="" aria-hidden="true" />
+              <span className="brand-title">UniConnect</span>
             </Link>
 
             <button
