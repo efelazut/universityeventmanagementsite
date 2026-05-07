@@ -52,7 +52,7 @@ export function ClubDetailPage() {
     () => (resolvedClubId && user?.token ? fetchClubFollowStatus(resolvedClubId, user.token, apiBaseUrl) : Promise.resolve(null)),
     [resolvedClubId, user?.token, apiBaseUrl]
   );
-  const users = useAsyncData(() => (user?.token ? fetchUsers(apiBaseUrl) : Promise.resolve([])), [user?.token, apiBaseUrl]);
+  const users = useAsyncData(() => (user?.token ? fetchUsers(user.token, apiBaseUrl) : Promise.resolve([])), [user?.token, apiBaseUrl]);
 
   if (club.loading) {
     return <div className="loading-state loading-state-large">Kulüp sayfası hazırlanıyor...</div>;

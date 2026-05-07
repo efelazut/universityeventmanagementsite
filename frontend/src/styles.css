@@ -1022,13 +1022,37 @@ p {
   align-content: start;
 }
 
+.auth-switch-text {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-switch-text a {
+  color: var(--primary-dark);
+  text-decoration: none;
+}
+
 .login-card label,
 .management-form label,
+.compact-form label,
 .filter-field {
   display: grid;
   gap: 8px;
   font-weight: 600;
   color: var(--muted-strong);
+}
+
+.compact-form {
+  display: grid;
+  gap: 14px;
+}
+
+.compact-form input:disabled {
+  color: var(--muted);
+  background: rgba(245, 239, 250, 0.75);
+  cursor: not-allowed;
 }
 
 .management-form {

@@ -74,6 +74,9 @@ public class AppDbContext : DbContext
             entity.HasIndex(user => user.Email)
                 .IsUnique();
 
+            entity.HasIndex(user => user.StudentNumber)
+                .IsUnique();
+
             entity.HasOne(user => user.Club)
                 .WithMany()
                 .HasForeignKey(user => user.ClubId)

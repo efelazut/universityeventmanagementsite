@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UniversityEventManagement.Api.Models;
 using UniversityEventManagement.Api.Security;
@@ -22,6 +23,7 @@ public static partial class AppDbSeeder
             await EnsureSystemUsersAsync(dbContext);
             await EnsureDemoClubManagersAsync(dbContext);
             await EnsureFeaturedUpcomingEventsAsync(dbContext);
+            await EnsureSeedPasswordHashesAsync(dbContext);
             return;
         }
 
@@ -34,6 +36,7 @@ public static partial class AppDbSeeder
         if (!Directory.Exists(seedRoot))
         {
             await EnsureSystemUsersAsync(dbContext);
+            await EnsureSeedPasswordHashesAsync(dbContext);
             return;
         }
 
@@ -97,6 +100,7 @@ public static partial class AppDbSeeder
         await EnsurePresentationUsersAsync(dbContext, clubEntities);
         await EnsureClubTeamsAndFollowersAsync(dbContext, clubEntities);
         await EnsureDemoClubManagersAsync(dbContext);
+        await EnsureSeedPasswordHashesAsync(dbContext);
 
         var clubByKey = clubEntities.ToDictionary(club => club.SourceKey, club => club);
         var eventEntities = new List<Event>();
@@ -504,6 +508,25 @@ public static partial class AppDbSeeder
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task EnsureSeedPasswordHashesAsync(AppDbContext dbContext)
+    {
+        var passwordHasher = new PasswordHasher<User>();
+        var users = await dbContext.Users
+            .Where(user => user.PasswordHash == "Password1!" || user.PasswordHash == "Admin123!")
+            .ToListAsync();
+
+        foreach (var user in users)
+        {
+            var plainPassword = user.PasswordHash;
+            user.PasswordHash = passwordHasher.HashPassword(user, plainPassword);
+        }
+
+        if (users.Count != 0)
+        {
+            await dbContext.SaveChangesAsync();
+        }
     }
 
     private static async Task EnsureClubTeamsAndFollowersAsync(AppDbContext dbContext, IReadOnlyList<Club> clubs)

@@ -11,6 +11,7 @@ public interface IUserService
     ServiceResult Delete(int id);
     IReadOnlyList<UserResponse> GetByClubId(int clubId);
     ServiceResult<UserProfileResponse> GetCurrentUser(int? userId, string? email);
+    ServiceResult<UserProfileResponse> UpdateCurrentUser(int? userId, string? email, UpdateCurrentUserRequest request);
     ServiceResult<UserEventActivityResponse> GetCurrentUserEvents(int? userId, string? email);
     ServiceResult<OrganizerProfileResponse> GetOrganizerProfile(int id);
 }

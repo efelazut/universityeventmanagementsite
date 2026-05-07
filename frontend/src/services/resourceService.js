@@ -62,9 +62,11 @@ export const uploadImage = (file, category, token, baseUrl) => {
 };
 
 export const fetchMyProfile = (token, baseUrl) => apiRequest("/api/Users/me", { token, baseUrl });
+export const updateMyProfile = (payload, token, baseUrl) =>
+  apiRequest("/api/Users/me", { method: "PUT", body: payload, token, baseUrl });
 export const fetchMyEvents = (token, baseUrl) => apiRequest("/api/Users/me/events", { token, baseUrl });
 export const fetchOrganizerProfile = (id, baseUrl) => apiRequest(`/api/Users/${id}/organizer-profile`, { baseUrl });
-export const fetchUsers = (baseUrl) => apiRequest("/api/Users", { baseUrl });
+export const fetchUsers = (token, baseUrl) => apiRequest("/api/Users", { token, baseUrl });
 
 export const fetchEventReviews = (eventId, baseUrl) => apiRequest(`/api/events/${eventId}/reviews`, { baseUrl });
 export const createEventReview = (eventId, payload, token, baseUrl) =>

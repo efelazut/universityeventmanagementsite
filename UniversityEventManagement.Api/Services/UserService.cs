@@ -1,4 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using UniversityEventManagement.Api.Data;
 using UniversityEventManagement.Api.DTOs;
 using UniversityEventManagement.Api.Models;
@@ -9,6 +12,7 @@ namespace UniversityEventManagement.Api.Services;
 public class UserService : IUserService
 {
     private readonly AppDbContext _dbContext;
+    private readonly PasswordHasher<User> _passwordHasher = new();
 
     public UserService(AppDbContext dbContext)
     {
@@ -46,24 +50,35 @@ public class UserService : IUserService
         }
 
         var normalizedEmail = request.Email.Trim();
+        if (!IsAsciiEmail(normalizedEmail))
+        {
+            return ServiceResult<UserResponse>.BadRequest("Geçerli ve Türkçe karakter içermeyen bir e-posta girin.");
+        }
+
         if (_dbContext.Users.AsNoTracking().Any(user => user.Email.ToLower() == normalizedEmail.ToLower()))
         {
-            return ServiceResult<UserResponse>.Conflict("Email is already registered");
+            return ServiceResult<UserResponse>.Conflict("Bu e-posta zaten kullanılıyor.");
+        }
+
+        var normalizedStudentNumber = request.StudentNumber.Trim();
+        if (_dbContext.Users.AsNoTracking().Any(user => user.StudentNumber.ToLower() == normalizedStudentNumber.ToLower()))
+        {
+            return ServiceResult<UserResponse>.Conflict("Bu öğrenci numarası kayıtlı.");
         }
 
         var createdUser = new User
         {
             FullName = request.FullName.Trim(),
             Email = normalizedEmail,
-            PasswordHash = request.PasswordHash,
             Role = UserRoles.Normalize(request.Role),
             Department = request.Department.Trim(),
             Faculty = request.Faculty.Trim(),
-            StudentNumber = request.StudentNumber.Trim(),
+            StudentNumber = normalizedStudentNumber,
             YearClass = request.YearClass.Trim(),
             IsActiveMember = request.IsActiveMember,
             ClubId = request.ClubId
         };
+        createdUser.PasswordHash = _passwordHasher.HashPassword(createdUser, request.PasswordHash);
 
         _dbContext.Users.Add(createdUser);
         _dbContext.SaveChanges();
@@ -90,18 +105,29 @@ public class UserService : IUserService
         }
 
         var normalizedEmail = request.Email.Trim();
+        if (!IsAsciiEmail(normalizedEmail))
+        {
+            return ServiceResult<UserResponse>.BadRequest("Geçerli ve Türkçe karakter içermeyen bir e-posta girin.");
+        }
+
         if (_dbContext.Users.AsNoTracking().Any(user => user.Id != id && user.Email.ToLower() == normalizedEmail.ToLower()))
         {
-            return ServiceResult<UserResponse>.Conflict("Email is already registered");
+            return ServiceResult<UserResponse>.Conflict("Bu e-posta zaten kullanılıyor.");
+        }
+
+        var normalizedStudentNumber = request.StudentNumber.Trim();
+        if (_dbContext.Users.AsNoTracking().Any(user => user.Id != id && user.StudentNumber.ToLower() == normalizedStudentNumber.ToLower()))
+        {
+            return ServiceResult<UserResponse>.Conflict("Bu öğrenci numarası kayıtlı.");
         }
 
         existingUser.FullName = request.FullName.Trim();
         existingUser.Email = normalizedEmail;
-        existingUser.PasswordHash = request.PasswordHash;
+        existingUser.PasswordHash = _passwordHasher.HashPassword(existingUser, request.PasswordHash);
         existingUser.Role = UserRoles.Normalize(request.Role);
         existingUser.Department = request.Department.Trim();
         existingUser.Faculty = request.Faculty.Trim();
-        existingUser.StudentNumber = request.StudentNumber.Trim();
+        existingUser.StudentNumber = normalizedStudentNumber;
         existingUser.YearClass = request.YearClass.Trim();
         existingUser.IsActiveMember = request.IsActiveMember;
         existingUser.ClubId = request.ClubId;
@@ -170,6 +196,31 @@ public class UserService : IUserService
                 })
                 .ToList()
         });
+    }
+
+    public ServiceResult<UserProfileResponse> UpdateCurrentUser(int? userId, string? email, UpdateCurrentUserRequest request)
+    {
+        var user = ResolveCurrentUserForUpdate(userId, email);
+        if (user is null)
+        {
+            return ServiceResult<UserProfileResponse>.NotFound("Kullanıcı kaydı bulunamadı.");
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        if (!IsAsciiEmail(normalizedEmail))
+        {
+            return ServiceResult<UserProfileResponse>.BadRequest("Geçerli ve Türkçe karakter içermeyen bir e-posta girin.");
+        }
+
+        if (_dbContext.Users.AsNoTracking().Any(item => item.Id != user.Id && item.Email.ToLower() == normalizedEmail))
+        {
+            return ServiceResult<UserProfileResponse>.Conflict("Bu e-posta zaten kullanılıyor.");
+        }
+
+        user.Email = normalizedEmail;
+        _dbContext.SaveChanges();
+
+        return GetCurrentUser(user.Id, user.Email);
     }
 
     public ServiceResult<UserEventActivityResponse> GetCurrentUserEvents(int? userId, string? email)
@@ -300,6 +351,43 @@ public class UserService : IUserService
         }
 
         return null;
+    }
+
+    private User? ResolveCurrentUserForUpdate(int? userId, string? email)
+    {
+        if (userId.HasValue)
+        {
+            var byId = _dbContext.Users.FirstOrDefault(item => item.Id == userId.Value);
+            if (byId is not null)
+            {
+                return byId;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return _dbContext.Users.FirstOrDefault(item => item.Email.ToLower() == email.Trim().ToLower());
+        }
+
+        return null;
+    }
+
+    private static bool IsAsciiEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, "^[\\u0000-\\u007F]+$"))
+        {
+            return false;
+        }
+
+        try
+        {
+            var address = new MailAddress(email);
+            return string.Equals(address.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private static UserResponse Map(User user) => new()

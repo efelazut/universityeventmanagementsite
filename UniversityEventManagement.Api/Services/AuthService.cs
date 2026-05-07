@@ -1,6 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UniversityEventManagement.Api.Data;
@@ -14,6 +17,7 @@ public class AuthService : IAuthService
 {
     private readonly IConfiguration _configuration;
     private readonly AppDbContext _dbContext;
+    private readonly PasswordHasher<User> _passwordHasher = new();
 
     public AuthService(IConfiguration configuration, AppDbContext dbContext)
     {
@@ -23,39 +27,58 @@ public class AuthService : IAuthService
 
     public ServiceResult<AuthResponse> Register(RegisterRequest request)
     {
-        if (!UserRoles.IsSupported(request.Role))
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var normalizedStudentNumber = request.StudentNumber.Trim();
+        var fullName = request.FullName.Trim();
+
+        if (string.IsNullOrWhiteSpace(fullName))
         {
-            return ServiceResult<AuthResponse>.BadRequest("Invalid role");
+            return ServiceResult<AuthResponse>.BadRequest("Ad soyad zorunludur.");
         }
 
-        var normalizedEmail = request.Email.Trim();
-        var existingUser = _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefault(user => user.Email.ToLower() == normalizedEmail.ToLower());
-
-        if (existingUser is not null)
+        if (string.IsNullOrWhiteSpace(normalizedStudentNumber))
         {
-            return ServiceResult<AuthResponse>.Conflict("Email is already registered");
+            return ServiceResult<AuthResponse>.BadRequest("Öğrenci numarası zorunludur.");
         }
 
-        if (request.ClubId.HasValue && !_dbContext.Clubs.Any(club => club.Id == request.ClubId.Value))
+        if (!IsAsciiEmail(normalizedEmail))
         {
-            return ServiceResult<AuthResponse>.NotFound("Club not found");
+            return ServiceResult<AuthResponse>.BadRequest("Geçerli ve Türkçe karakter içermeyen bir e-posta girin.");
+        }
+
+        if (request.Password.Length < 6)
+        {
+            return ServiceResult<AuthResponse>.BadRequest("Şifre en az 6 karakter olmalıdır.");
+        }
+
+        if (request.Password != request.ConfirmPassword)
+        {
+            return ServiceResult<AuthResponse>.BadRequest("Şifreler eşleşmiyor.");
+        }
+
+        if (_dbContext.Users.AsNoTracking().Any(user => user.Email.ToLower() == normalizedEmail))
+        {
+            return ServiceResult<AuthResponse>.Conflict("Bu e-posta zaten kullanılıyor.");
+        }
+
+        if (_dbContext.Users.AsNoTracking().Any(user => user.StudentNumber.ToLower() == normalizedStudentNumber.ToLower()))
+        {
+            return ServiceResult<AuthResponse>.Conflict("Bu öğrenci numarası kayıtlı.");
         }
 
         var createdUser = new User
         {
-            FullName = request.FullName.Trim(),
+            FullName = fullName,
             Email = normalizedEmail,
-            PasswordHash = request.Password,
-            Role = UserRoles.Normalize(request.Role),
-            Department = request.Department.Trim(),
-            Faculty = request.Faculty.Trim(),
-            StudentNumber = request.StudentNumber.Trim(),
-            YearClass = request.YearClass.Trim(),
-            IsActiveMember = request.IsActiveMember,
-            ClubId = request.ClubId
+            Role = UserRoles.Student,
+            Department = "Belirtilmedi",
+            Faculty = "Belirtilmedi",
+            StudentNumber = normalizedStudentNumber,
+            YearClass = "Belirtilmedi",
+            IsActiveMember = true
         };
+
+        createdUser.PasswordHash = _passwordHasher.HashPassword(createdUser, request.Password);
 
         _dbContext.Users.Add(createdUser);
         _dbContext.SaveChanges();
@@ -68,24 +91,36 @@ public class AuthService : IAuthService
             FullName = createdUser.FullName,
             Role = createdUser.Role,
             ClubId = createdUser.ClubId,
-            Message = "Registration successful"
+            Message = "Kayıt başarılı, giriş yapabilirsiniz."
         });
     }
 
     public ServiceResult<AuthResponse> Login(LoginRequest request)
     {
-        var normalizedEmail = request.Email.Trim();
+        var identifier = (string.IsNullOrWhiteSpace(request.EmailOrStudentNumber) ? request.Email : request.EmailOrStudentNumber).Trim();
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return ServiceResult<AuthResponse>.BadRequest("E-posta veya öğrenci numarası girin.");
+        }
+
+        var isEmail = identifier.Contains('@');
+        var normalizedIdentifier = isEmail ? identifier.ToLowerInvariant() : identifier;
         var user = _dbContext.Users
-            .AsNoTracking()
             .Include(existingUser => existingUser.ManagedClubs)
                 .ThenInclude(manager => manager.Club)
-            .FirstOrDefault(existingUser =>
-                existingUser.Email.ToLower() == normalizedEmail.ToLower() &&
-                existingUser.PasswordHash == request.Password);
+            .FirstOrDefault(existingUser => isEmail
+                ? existingUser.Email.ToLower() == normalizedIdentifier
+                : existingUser.StudentNumber.ToLower() == normalizedIdentifier.ToLower());
 
-        if (user is null)
+        if (user is null || !VerifyPassword(user, request.Password, out var shouldRehash))
         {
             return ServiceResult<AuthResponse>.Unauthorized();
+        }
+
+        if (shouldRehash)
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+            _dbContext.SaveChanges();
         }
 
         return ServiceResult<AuthResponse>.Ok(new AuthResponse
@@ -99,6 +134,52 @@ public class AuthService : IAuthService
             ManagedClubs = MapManagedClubs(user),
             Message = "Login successful"
         });
+    }
+
+    private bool VerifyPassword(User user, string password, out bool shouldRehash)
+    {
+        shouldRehash = false;
+
+        try
+        {
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+            if (result == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                shouldRehash = true;
+                return true;
+            }
+
+            if (result == PasswordVerificationResult.Success)
+            {
+                return true;
+            }
+        }
+        catch (FormatException)
+        {
+            // Legacy demo data used plain text passwords; migrate after successful login.
+        }
+
+        var matchesLegacyPlainText = user.PasswordHash == password;
+        shouldRehash = matchesLegacyPlainText;
+        return matchesLegacyPlainText;
+    }
+
+    private static bool IsAsciiEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, "^[\\u0000-\\u007F]+$"))
+        {
+            return false;
+        }
+
+        try
+        {
+            var address = new MailAddress(email);
+            return string.Equals(address.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private static IReadOnlyList<ManagedClubSummaryResponse> MapManagedClubs(User user) => user.ManagedClubs

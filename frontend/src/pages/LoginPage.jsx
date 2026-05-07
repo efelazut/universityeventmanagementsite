@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const testAccounts = [
@@ -16,7 +16,10 @@ export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: testAccounts[0].email, password: testAccounts[0].password });
+  const [form, setForm] = useState({
+    email: location.state?.identifier || testAccounts[0].email,
+    password: testAccounts[0].password
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -75,10 +78,11 @@ export function LoginPage() {
         <p className="eyebrow">Giriş</p>
         <h2>Oturum Aç</h2>
         <p className="section-description">Test hesabı seçebilir ya da bilgileri elle girebilirsiniz.</p>
+        {location.state?.message ? <div className="notice-box">{location.state.message}</div> : null}
 
         <label>
-          E-posta
-          <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          E-posta veya Öğrenci No
+          <input type="text" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
         </label>
         <label>
           Şifre
@@ -88,6 +92,9 @@ export function LoginPage() {
         <button className="primary-button" type="submit" disabled={loading}>
           {loading ? "Giriş yapılıyor..." : "Platforma Gir"}
         </button>
+        <p className="auth-switch-text">
+          Hesabınız yok mu? <Link to="/register">Kayıt olun</Link>
+        </p>
       </form>
     </div>
   );

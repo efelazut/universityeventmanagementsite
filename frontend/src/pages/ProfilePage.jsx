@@ -1,10 +1,11 @@
 ﻿import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { SectionCard } from "../components/SectionCard";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { fetchMyEvents, fetchMyProfile } from "../services/resourceService";
+import { fetchMyEvents, fetchMyProfile, updateMyProfile } from "../services/resourceService";
 
 function roleLabel(role) {
   if (role === "Admin") return "Yönetici";
@@ -46,6 +47,15 @@ export function ProfilePage() {
   const { apiBaseUrl, user } = useAuth();
   const profileQuery = useAsyncData(() => fetchMyProfile(user.token, apiBaseUrl), [user?.token, apiBaseUrl]);
   const eventsQuery = useAsyncData(() => fetchMyEvents(user.token, apiBaseUrl), [user?.token, apiBaseUrl]);
+  const [emailForm, setEmailForm] = useState("");
+  const [profileFeedback, setProfileFeedback] = useState(null);
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  useEffect(() => {
+    if (profileQuery.data?.email) {
+      setEmailForm(profileQuery.data.email);
+    }
+  }, [profileQuery.data?.email]);
 
   if (profileQuery.loading || eventsQuery.loading) {
     return <div className="loading-state loading-state-large">Profil verileri hazırlanıyor...</div>;
@@ -57,6 +67,28 @@ export function ProfilePage() {
 
   const profile = profileQuery.data;
   const activity = eventsQuery.data;
+
+  const handleEmailUpdate = async (event) => {
+    event.preventDefault();
+    setProfileFeedback(null);
+    const nextEmail = emailForm.trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail) || !/^[\u0000-\u007F]+$/.test(nextEmail)) {
+      setProfileFeedback({ type: "error", text: "Geçerli ve Türkçe karakter içermeyen bir e-posta girin." });
+      return;
+    }
+
+    setSavingEmail(true);
+    try {
+      await updateMyProfile({ email: nextEmail }, user.token, apiBaseUrl);
+      setProfileFeedback({ type: "success", text: "E-posta adresiniz güncellendi." });
+      await profileQuery.reload();
+    } catch (err) {
+      setProfileFeedback({ type: "error", text: err.message || "E-posta güncellenemedi." });
+    } finally {
+      setSavingEmail(false);
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -99,9 +131,33 @@ export function ProfilePage() {
           <div className="detail-table">
             <div><span>Ad soyad</span><strong>{profile.fullName}</strong></div>
             <div><span>E-posta</span><strong>{profile.email}</strong></div>
+            <div><span>Öğrenci numarası</span><strong>{profile.studentNumber || "Belirtilmedi"}</strong></div>
             <div><span>Rol</span><strong>{roleLabel(profile.role)}</strong></div>
             <div><span>Hesap durumu</span><strong>{profile.isActiveMember ? "Aktif" : "Pasif"}</strong></div>
           </div>
+        </SectionCard>
+
+        <SectionCard title="Hesap bilgileri" description="E-postanızı güncelleyebilirsiniz; öğrenci numarası ve rol değiştirilemez.">
+          <form className="compact-form" onSubmit={handleEmailUpdate}>
+            <label>
+              Ad soyad
+              <input type="text" value={profile.fullName} disabled />
+            </label>
+            <label>
+              Öğrenci numarası
+              <input type="text" value={profile.studentNumber || ""} disabled />
+            </label>
+            <label>
+              E-posta
+              <input type="email" value={emailForm} onChange={(event) => setEmailForm(event.target.value)} />
+            </label>
+            {profileFeedback ? (
+              <div className={profileFeedback.type === "success" ? "notice-box" : "error-text"}>{profileFeedback.text}</div>
+            ) : null}
+            <button className="primary-button" type="submit" disabled={savingEmail || emailForm.trim().toLowerCase() === profile.email.toLowerCase()}>
+              {savingEmail ? "Güncelleniyor..." : "E-postayı Güncelle"}
+            </button>
+          </form>
         </SectionCard>
 
         <SectionCard title="Akademik bilgiler" description="Öğrenci veya yönetici hesabına ait akademik alanlar.">
