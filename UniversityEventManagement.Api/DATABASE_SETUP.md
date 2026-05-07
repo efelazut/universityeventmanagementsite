@@ -1,10 +1,10 @@
-# Local SQL Server Setup
+# Local PostgreSQL Setup
 
-This backend now uses SQL Server through Entity Framework Core as its primary persistent store.
+This backend uses PostgreSQL through Entity Framework Core as its primary persistent store.
 
 ## Prerequisites
 
-- SQL Server LocalDB, SQL Server Express, or another reachable SQL Server instance
+- PostgreSQL server running locally (or reachable)
 - .NET 8 SDK
 
 ## Connection String
@@ -18,11 +18,11 @@ Example:
 
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=UniversityEventManagementDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;"
+  "DefaultConnection": "Host=localhost;Port=5432;Database=UniversityEventManagementDb;Username=postgres;Password=POSTGRES_SIFRE"
 }
 ```
 
-If you use SQL authentication instead of Windows authentication, replace the connection string accordingly.
+If you use a different database name or credentials, replace the connection string accordingly.
 
 ## EF Core Commands
 

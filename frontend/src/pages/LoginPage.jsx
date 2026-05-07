@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -52,7 +52,7 @@ export function LoginPage() {
           </div>
           <div className="hero-bullet">
             <strong>Gerçek veri</strong>
-            <span>Kulüpler, salonlar ve etkinlikler SQL Server üzerinden gelir.</span>
+            <span>Kulüpler, salonlar ve etkinlikler PostgreSQL veritabanı üzerinden gelir.</span>
           </div>
           <div className="hero-bullet">
             <strong>Sunuma hazır</strong>

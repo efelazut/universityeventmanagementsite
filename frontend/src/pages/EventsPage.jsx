@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -100,7 +100,7 @@ export function EventsPage() {
   const visibleEvents = timelineEvents[activeTimeline] || [];
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Bu etkinligi silmek istediginize emin misiniz?");
+    const confirmed = window.confirm("Bu etkinliği silmek istediğinize emin misiniz?");
     if (!confirmed) return;
 
     try {
@@ -113,14 +113,14 @@ export function EventsPage() {
   };
 
   if (eventsQuery.loading) {
-    return <div className="loading-state loading-state-large">Etkinlikler hazirlaniyor...</div>;
+    return <div className="loading-state loading-state-large">Etkinlikler hazırlanıyor...</div>;
   }
 
   if (eventsQuery.error) {
     return (
       <ErrorState
-        title="Etkinlikler yuklenemedi"
-        description="Etkinlik listesi su anda alinamiyor."
+        title="Etkinlikler yüklenemedi"
+        description="Etkinlik listesi şu anda alınamıyor."
         error={eventsQuery.error}
         onRetry={eventsQuery.reload}
         icon="Et"
@@ -139,7 +139,7 @@ export function EventsPage() {
       ) : null}
 
       {myEventsQuery.error && user ? (
-        <div className="notice-box">Kisisel etkinlik durumu gecici olarak alinamadi. Genel liste gorunmeye devam ediyor.</div>
+        <div className="notice-box">Kişisel etkinlik durumu geçici olarak alınamadı. Genel liste görünmeye devam ediyor.</div>
       ) : null}
       {feedback ? <div className={feedback.type === "error" ? "error-panel" : "notice-box"}>{feedback.text}</div> : null}
 
@@ -152,22 +152,22 @@ export function EventsPage() {
         <div className="filter-toolbar event-filter-toolbar">
           <label className="filter-field">
             <span>Ara</span>
-            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulüp adi" />
+            <input value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Etkinlik veya kulüp adı" />
           </label>
           <label className="filter-field">
             <span>Durum</span>
             <select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}>
-              <option value="all">Tumu</option>
-              <option value="Upcoming">Yaklasan</option>
+              <option value="all">Tümü</option>
+              <option value="Upcoming">Yaklaşan</option>
               <option value="Ongoing">Devam Eden</option>
-              <option value="Completed">Gecmis</option>
-              <option value="Cancelled">Iptal Edildi</option>
+              <option value="Completed">Geçmiş</option>
+              <option value="Cancelled">İptal Edildi</option>
             </select>
           </label>
           <label className="filter-field">
             <span>Kategori</span>
             <select value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })}>
-              <option value="all">Tumu</option>
+              <option value="all">Tümü</option>
               {options.categories.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
