@@ -23,6 +23,33 @@ function formatEventDate(value) {
   });
 }
 
+const departmentsByFaculty = {
+  "Mühendislik ve Doğa Bilimleri Fakültesi": [
+    "Yazılım Mühendisliği",
+    "Bilgisayar Mühendisliği",
+    "Endüstri Mühendisliği",
+    "Elektrik-Elektronik Mühendisliği"
+  ],
+  "İşletme ve Yönetim Bilimleri Fakültesi": [
+    "İşletme",
+    "Uluslararası Ticaret ve Lojistik",
+    "Ekonomi ve Finans",
+    "Siyaset Bilimi ve Uluslararası İlişkiler"
+  ],
+  "Hukuk Fakültesi": ["Hukuk"],
+  "İletişim Fakültesi": ["Halkla İlişkiler ve Tanıtım", "Görsel İletişim Tasarımı", "Radyo, Televizyon ve Sinema"],
+  "Mimarlık ve Tasarım Fakültesi": ["Mimarlık", "İç Mimarlık", "Endüstriyel Tasarım"],
+  "Eğitim Fakültesi": ["Rehberlik ve Psikolojik Danışmanlık", "Okul Öncesi Öğretmenliği", "İngilizce Öğretmenliği"],
+  "İnsan ve Toplum Bilimleri Fakültesi": ["Psikoloji", "Sosyoloji", "Felsefe"],
+  "Güzel Sanatlar Fakültesi": ["Grafik Tasarımı", "Sahne Sanatları", "Plastik Sanatlar"],
+  "Tıp Fakültesi": ["Tıp"],
+  "Hemşirelik Yüksekokulu": ["Hemşirelik"],
+  "Meslek Yüksekokulu": ["Bilgisayar Programcılığı", "Dış Ticaret", "Grafik Tasarımı"]
+};
+
+const facultyOptions = Object.keys(departmentsByFaculty);
+const yearClassOptions = ["Hazırlık", "1. Sınıf", "2. Sınıf", "3. Sınıf", "4. Sınıf", "Mezun"];
+
 function EventActivitySection({ title, description, items, emptyTitle, emptyDescription }) {
   return (
     <SectionCard title={title} description={description}>
@@ -65,10 +92,15 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (profileQuery.data) {
+      const faculty = facultyOptions.includes(profileQuery.data.faculty) ? profileQuery.data.faculty : "";
+      const departmentOptions = faculty ? departmentsByFaculty[faculty] : [];
+      const department = departmentOptions.includes(profileQuery.data.department) ? profileQuery.data.department : "";
+      const yearClass = yearClassOptions.includes(profileQuery.data.yearClass) ? profileQuery.data.yearClass : "";
+
       setAcademicForm({
-        faculty: profileQuery.data.faculty || "",
-        department: profileQuery.data.department || "",
-        yearClass: profileQuery.data.yearClass || ""
+        faculty,
+        department,
+        yearClass
       });
     }
   }, [profileQuery.data]);
@@ -109,6 +141,12 @@ export function ProfilePage() {
   const handleAcademicUpdate = async (event) => {
     event.preventDefault();
     setAcademicFeedback(null);
+
+    if (academicForm.department && !academicForm.faculty) {
+      setAcademicFeedback({ type: "error", text: "Bölüm seçmek için önce fakülte seçin." });
+      return;
+    }
+
     setSavingAcademic(true);
 
     try {
@@ -235,23 +273,28 @@ export function ProfilePage() {
           <form className="compact-form" onSubmit={handleAcademicUpdate}>
             <label>
               Fakülte
-              <input
-                type="text"
+              <select
                 value={academicForm.faculty}
-                maxLength={150}
-                onChange={(event) => setAcademicForm({ ...academicForm, faculty: event.target.value })}
-                placeholder="Belirtilmedi"
-              />
+                onChange={(event) => setAcademicForm({ ...academicForm, faculty: event.target.value, department: "" })}
+              >
+                <option value="">Belirtilmedi</option>
+                {facultyOptions.map((faculty) => (
+                  <option key={faculty} value={faculty}>{faculty}</option>
+                ))}
+              </select>
             </label>
             <label>
               Bölüm
-              <input
-                type="text"
+              <select
                 value={academicForm.department}
-                maxLength={150}
                 onChange={(event) => setAcademicForm({ ...academicForm, department: event.target.value })}
-                placeholder="Belirtilmedi"
-              />
+                disabled={!academicForm.faculty}
+              >
+                <option value="">Belirtilmedi</option>
+                {(departmentsByFaculty[academicForm.faculty] || []).map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
             </label>
             <label>
               Öğrenci numarası
@@ -259,13 +302,15 @@ export function ProfilePage() {
             </label>
             <label>
               Sınıf / yıl
-              <input
-                type="text"
+              <select
                 value={academicForm.yearClass}
-                maxLength={50}
                 onChange={(event) => setAcademicForm({ ...academicForm, yearClass: event.target.value })}
-                placeholder="Belirtilmedi"
-              />
+              >
+                <option value="">Belirtilmedi</option>
+                {yearClassOptions.map((yearClass) => (
+                  <option key={yearClass} value={yearClass}>{yearClass}</option>
+                ))}
+              </select>
             </label>
             {academicFeedback ? (
               <div className={academicFeedback.type === "success" ? "notice-box" : "error-text"}>{academicFeedback.text}</div>

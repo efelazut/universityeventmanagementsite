@@ -11,6 +11,73 @@ namespace UniversityEventManagement.Api.Services;
 
 public class UserService : IUserService
 {
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedDepartmentsByFaculty = new Dictionary<string, string[]>
+    {
+        ["Mühendislik ve Doğa Bilimleri Fakültesi"] =
+        [
+            "Yazılım Mühendisliği",
+            "Bilgisayar Mühendisliği",
+            "Endüstri Mühendisliği",
+            "Elektrik-Elektronik Mühendisliği"
+        ],
+        ["İşletme ve Yönetim Bilimleri Fakültesi"] =
+        [
+            "İşletme",
+            "Uluslararası Ticaret ve Lojistik",
+            "Ekonomi ve Finans",
+            "Siyaset Bilimi ve Uluslararası İlişkiler"
+        ],
+        ["Hukuk Fakültesi"] = ["Hukuk"],
+        ["İletişim Fakültesi"] =
+        [
+            "Halkla İlişkiler ve Tanıtım",
+            "Görsel İletişim Tasarımı",
+            "Radyo, Televizyon ve Sinema"
+        ],
+        ["Mimarlık ve Tasarım Fakültesi"] =
+        [
+            "Mimarlık",
+            "İç Mimarlık",
+            "Endüstriyel Tasarım"
+        ],
+        ["Eğitim Fakültesi"] =
+        [
+            "Rehberlik ve Psikolojik Danışmanlık",
+            "Okul Öncesi Öğretmenliği",
+            "İngilizce Öğretmenliği"
+        ],
+        ["İnsan ve Toplum Bilimleri Fakültesi"] =
+        [
+            "Psikoloji",
+            "Sosyoloji",
+            "Felsefe"
+        ],
+        ["Güzel Sanatlar Fakültesi"] =
+        [
+            "Grafik Tasarımı",
+            "Sahne Sanatları",
+            "Plastik Sanatlar"
+        ],
+        ["Tıp Fakültesi"] = ["Tıp"],
+        ["Hemşirelik Yüksekokulu"] = ["Hemşirelik"],
+        ["Meslek Yüksekokulu"] =
+        [
+            "Bilgisayar Programcılığı",
+            "Dış Ticaret",
+            "Grafik Tasarımı"
+        ]
+    };
+
+    private static readonly IReadOnlySet<string> AllowedYearClasses = new HashSet<string>
+    {
+        "Hazırlık",
+        "1. Sınıf",
+        "2. Sınıf",
+        "3. Sınıf",
+        "4. Sınıf",
+        "Mezun"
+    };
+
     private readonly AppDbContext _dbContext;
     private readonly PasswordHasher<User> _passwordHasher = new();
 
@@ -235,9 +302,27 @@ public class UserService : IUserService
         var department = NormalizeOptionalText(request.Department, 150);
         var yearClass = NormalizeOptionalText(request.YearClass, 50);
 
-        if (!IsValidYearClass(yearClass))
+        if (!string.IsNullOrWhiteSpace(faculty) && !AllowedDepartmentsByFaculty.ContainsKey(faculty))
         {
-            return ServiceResult<UserProfileResponse>.BadRequest("Sınıf / yıl bilgisi çok uzun veya geçersiz görünüyor.");
+            return ServiceResult<UserProfileResponse>.BadRequest("Lütfen listeden geçerli bir fakülte seçin.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(department))
+        {
+            if (string.IsNullOrWhiteSpace(faculty))
+            {
+                return ServiceResult<UserProfileResponse>.BadRequest("Bölüm seçmek için önce fakülte seçin.");
+            }
+
+            if (!AllowedDepartmentsByFaculty[faculty].Contains(department))
+            {
+                return ServiceResult<UserProfileResponse>.BadRequest("Seçilen bölüm bu fakülteye ait değil.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(yearClass) && !AllowedYearClasses.Contains(yearClass))
+        {
+            return ServiceResult<UserProfileResponse>.BadRequest("Lütfen listeden geçerli bir sınıf / yıl seçin.");
         }
 
         user.Faculty = faculty;
@@ -479,9 +564,6 @@ public class UserService : IUserService
         var normalized = Regex.Replace((value ?? string.Empty).Trim(), "\\s+", " ");
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
     }
-
-    private static bool IsValidYearClass(string value) =>
-        value.Length <= 50 && !Regex.IsMatch(value, "[<>]");
 
     private static UserResponse Map(User user) => new()
     {
