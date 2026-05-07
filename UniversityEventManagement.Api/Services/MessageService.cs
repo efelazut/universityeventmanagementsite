@@ -26,15 +26,18 @@ public class MessageService : IMessageService
         }
         else if (string.Equals(currentUserRole, "ClubManager", StringComparison.OrdinalIgnoreCase))
         {
-            var currentUser = _dbContext.Users.AsNoTracking().FirstOrDefault(user => user.Id == currentUserId);
-            if (currentUser?.ClubId is int clubId)
-            {
-                query = query.Where(thread => thread.ClubId == clubId);
-            }
-            else
+            var managedClubIds = _dbContext.ClubManagers
+                .AsNoTracking()
+                .Where(manager => manager.UserId == currentUserId)
+                .Select(manager => manager.ClubId)
+                .ToList();
+
+            if (managedClubIds.Count == 0)
             {
                 return [];
             }
+
+            query = query.Where(thread => managedClubIds.Contains(thread.ClubId));
         }
 
         return query
@@ -54,7 +57,7 @@ public class MessageService : IMessageService
 
         if (!CanAccessThread(thread, currentUserId, currentUserRole))
         {
-            return ServiceResult<MessageThreadResponse>.Forbidden("Bu sohbete erisim yetkiniz yok.");
+            return ServiceResult<MessageThreadResponse>.Forbidden("Bu sohbete erişim yetkiniz yok.");
         }
 
         MarkThreadAsRead(threadId, currentUserId);
@@ -107,7 +110,7 @@ public class MessageService : IMessageService
             .Select(manager => manager.UserId)
             .ToList();
 
-        _notificationService.CreateForUsers(recipientIds, "Yeni kulüp mesaji", $"{club.Name} için yeni bir sohbet baslatildi.", "Message", $"/messages?thread={thread.Id}");
+        _notificationService.CreateForUsers(recipientIds, "Yeni kulüp mesajı", $"{club.Name} için yeni bir sohbet başlatıldı.", "Message", $"/messages?thread={thread.Id}");
 
         return ServiceResult<MessageThreadResponse>.Created(MapThread(QueryThreads().First(item => item.Id == thread.Id), currentUserId));
     }
@@ -123,7 +126,7 @@ public class MessageService : IMessageService
         var hydratedThread = QueryThreads().First(item => item.Id == threadId);
         if (!CanAccessThread(hydratedThread, currentUserId, currentUserRole))
         {
-            return ServiceResult<MessageThreadResponse>.Forbidden("Bu sohbete mesaj gonderemezsiniz.");
+            return ServiceResult<MessageThreadResponse>.Forbidden("Bu sohbete mesaj gönderemezsiniz.");
         }
 
         var message = new Message
@@ -169,8 +172,9 @@ public class MessageService : IMessageService
             return false;
         }
 
-        var currentUser = _dbContext.Users.AsNoTracking().FirstOrDefault(user => user.Id == currentUserId);
-        return currentUser?.ClubId == thread.ClubId;
+        return _dbContext.ClubManagers
+            .AsNoTracking()
+            .Any(manager => manager.UserId == currentUserId && manager.ClubId == thread.ClubId);
     }
 
     private IQueryable<MessageThread> QueryThreads() => _dbContext.MessageThreads

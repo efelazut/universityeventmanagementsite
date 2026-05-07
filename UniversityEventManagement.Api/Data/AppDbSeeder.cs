@@ -20,6 +20,7 @@ public static partial class AppDbSeeder
         if (await dbContext.ImportRuns.AnyAsync())
         {
             await EnsureSystemUsersAsync(dbContext);
+            await EnsureDemoClubManagersAsync(dbContext);
             await EnsureFeaturedUpcomingEventsAsync(dbContext);
             return;
         }
@@ -95,6 +96,7 @@ public static partial class AppDbSeeder
         await dbContext.SaveChangesAsync();
         await EnsurePresentationUsersAsync(dbContext, clubEntities);
         await EnsureClubTeamsAndFollowersAsync(dbContext, clubEntities);
+        await EnsureDemoClubManagersAsync(dbContext);
 
         var clubByKey = clubEntities.ToDictionary(club => club.SourceKey, club => club);
         var eventEntities = new List<Event>();
@@ -394,6 +396,110 @@ public static partial class AppDbSeeder
                 existing.Bio = user.Bio;
                 existing.IsActiveMember = user.IsActiveMember;
                 existing.ClubId = user.ClubId;
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task EnsureDemoClubManagersAsync(AppDbContext dbContext)
+    {
+        var demoManagers = new[]
+        {
+            new
+            {
+                ClubKey = "Anka",
+                FullName = "Anka Kulüp Yöneticisi",
+                Email = "anka.yonetici@uniconnect.edu.tr",
+                Department = "Yazılım Mühendisliği",
+                Faculty = "Mühendislik ve Doğa Bilimleri Fakültesi",
+                StudentNumber = "KULUP001",
+                YearClass = "3. Sınıf",
+                Bio = "Anka Yazılım Kulübü yönetici hesabı."
+            },
+            new
+            {
+                ClubKey = "Sinema",
+                FullName = "Sinema Kulüp Yöneticisi",
+                Email = "sinema.yonetici@uniconnect.edu.tr",
+                Department = "Radyo, Televizyon ve Sinema",
+                Faculty = "İletişim Fakültesi",
+                StudentNumber = "KULUP002",
+                YearClass = "4. Sınıf",
+                Bio = "Sinema Kulübü yönetici hesabı."
+            },
+            new
+            {
+                ClubKey = "Hukuk",
+                FullName = "Hukuk Kulüp Yöneticisi",
+                Email = "hukuk.yonetici@uniconnect.edu.tr",
+                Department = "Hukuk",
+                Faculty = "Hukuk Fakültesi",
+                StudentNumber = "KULUP003",
+                YearClass = "3. Sınıf",
+                Bio = "Hukuk Kulübü yönetici hesabı."
+            }
+        };
+
+        foreach (var demoManager in demoManagers)
+        {
+            var club = await dbContext.Clubs.FirstOrDefaultAsync(item => item.Name.Contains(demoManager.ClubKey));
+            if (club is null)
+            {
+                continue;
+            }
+
+            var user = await dbContext.Users.FirstOrDefaultAsync(item => item.Email == demoManager.Email);
+            if (user is null)
+            {
+                user = new User
+                {
+                    FullName = demoManager.FullName,
+                    Email = demoManager.Email,
+                    PasswordHash = "Password1!",
+                    Role = UserRoles.ClubManager,
+                    Department = demoManager.Department,
+                    Faculty = demoManager.Faculty,
+                    StudentNumber = demoManager.StudentNumber,
+                    YearClass = demoManager.YearClass,
+                    Bio = demoManager.Bio,
+                    IsActiveMember = true,
+                    ClubId = club.Id
+                };
+                dbContext.Users.Add(user);
+                await dbContext.SaveChangesAsync();
+            }
+            else
+            {
+                user.FullName = demoManager.FullName;
+                user.PasswordHash = "Password1!";
+                user.Role = UserRoles.ClubManager;
+                user.Department = demoManager.Department;
+                user.Faculty = demoManager.Faculty;
+                user.StudentNumber = demoManager.StudentNumber;
+                user.YearClass = demoManager.YearClass;
+                user.Bio = demoManager.Bio;
+                user.IsActiveMember = true;
+                user.ClubId = club.Id;
+            }
+
+            var otherManagerRows = await dbContext.ClubManagers
+                .Where(manager => manager.UserId == user.Id && manager.ClubId != club.Id)
+                .ToListAsync();
+
+            if (otherManagerRows.Count != 0)
+            {
+                dbContext.ClubManagers.RemoveRange(otherManagerRows);
+            }
+
+            if (!await dbContext.ClubManagers.AnyAsync(manager => manager.UserId == user.Id && manager.ClubId == club.Id))
+            {
+                dbContext.ClubManagers.Add(new ClubManager
+                {
+                    ClubId = club.Id,
+                    UserId = user.Id,
+                    Role = "Manager"
+                });
             }
         }
 
