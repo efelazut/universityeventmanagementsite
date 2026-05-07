@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCommunicationCenter } from "../context/CommunicationCenterContext";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -22,7 +22,9 @@ export function Layout({ children }) {
   const { unreadMessageCount, unreadNotificationCount, openMessages, openNotifications } = useCommunicationCenter();
   const clubsQuery = useAsyncData(() => fetchClubs(apiBaseUrl), [apiBaseUrl]);
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const menuRef = useRef(null);
 
   const initials = useMemo(
@@ -62,6 +64,10 @@ export function Layout({ children }) {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
+
   const navItems = [
     { to: "/home", title: "Ana Sayfa" },
     { to: "/events", title: "Etkinlikler" },
@@ -89,7 +95,19 @@ export function Layout({ children }) {
               </div>
             </Link>
 
-            <nav className="navbar-nav">
+            <button
+              className="mobile-nav-toggle"
+              type="button"
+              aria-label={navOpen ? "Menüyü kapat" : "Menüyü aç"}
+              aria-expanded={navOpen}
+              onClick={() => setNavOpen((value) => !value)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+
+            <nav className={`navbar-nav ${navOpen ? "is-open" : ""}`}>
               {navItems.map((item) => (
                 <NavLink key={item.to} to={item.to} className="navbar-link">
                   {item.title}

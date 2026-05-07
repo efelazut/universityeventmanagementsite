@@ -5706,3 +5706,634 @@ textarea:focus {
     flex-direction: column;
   }
 }
+
+/* Responsive mobile hardening */
+.mobile-nav-toggle {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .page-frame {
+    width: 100%;
+    padding: 24px 20px 48px;
+  }
+
+  .navbar-container,
+  .page-hero,
+  .detail-hero,
+  .hero-card,
+  .login-card,
+  .section-card,
+  .rooms-modern-hero,
+  .calendar-modern-hero {
+    max-width: 100%;
+  }
+
+  .stat-grid,
+  .event-grid,
+  .featured-grid,
+  .club-grid,
+  .club-showcase-grid,
+  .insight-grid,
+  .room-card-grid,
+  .room-slot-grid,
+  .team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .two-column,
+  .profile-grid,
+  .calendar-layout,
+  .calendar-layout-wide,
+  .calendar-modern-layout,
+  .rooms-workspace,
+  .messaging-layout,
+  .event-detail-hero,
+  .event-info-grid,
+  .event-time-grid,
+  .form-grid.three-column {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-toolbar,
+  .filter-toolbar-wide,
+  .event-filter-toolbar,
+  .compact-filter-card .filter-toolbar,
+  .compact-filter-card .event-filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modern-calendar-card {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-navbar {
+    padding: 0 14px;
+  }
+
+  .navbar-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    height: auto;
+    min-height: 64px;
+    padding: 8px 0;
+    align-items: center;
+  }
+
+  .navbar-left {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .brand-header {
+    min-height: 48px;
+    min-width: 0;
+  }
+
+  .brand-header strong {
+    font-size: 17px;
+    white-space: nowrap;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-grid;
+    place-items: center;
+    gap: 4px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(118, 69, 137, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #4d225c;
+    cursor: pointer;
+  }
+
+  .mobile-nav-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .navbar-nav {
+    display: none;
+    grid-column: 1 / -1;
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(118, 69, 137, 0.14);
+    box-shadow: 0 14px 28px rgba(48, 15, 67, 0.08);
+  }
+
+  .navbar-nav.is-open {
+    display: grid;
+  }
+
+  .navbar-link {
+    width: 100%;
+    padding: 11px 12px;
+  }
+
+  .navbar-right {
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .icon-action {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .avatar-button {
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .avatar-copy {
+    display: none;
+  }
+
+  .profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .profile-menu {
+    right: 0;
+    width: min(280px, calc(100vw - 28px));
+  }
+
+  .page-frame {
+    padding: 18px 14px 38px;
+  }
+
+  .page-stack {
+    gap: 16px;
+  }
+
+  .page-hero,
+  .detail-hero,
+  .rooms-modern-hero,
+  .calendar-modern-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .hero-card,
+  .login-card,
+  .section-card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  h1,
+  .calendar-modern-hero h1,
+  .rooms-modern-hero h1 {
+    font-size: clamp(27px, 9vw, 36px);
+    line-height: 1.08;
+  }
+
+  h2,
+  .selected-day-head h2,
+  .rooms-detail-head h2 {
+    font-size: clamp(21px, 6vw, 28px);
+  }
+
+  .section-header,
+  .rooms-detail-head,
+  .selected-day-head,
+  .calendar-day-header,
+  .list-row-split,
+  .list-row-rich,
+  .room-row,
+  .review-card-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    text-align: left;
+  }
+
+  .section-header .inline-actions,
+  .form-actions,
+  .card-actions,
+  .hero-actions,
+  .inline-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .primary-button,
+  .ghost-button,
+  .mini-button,
+  .link-button,
+  .full-width-button {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .form-actions .primary-button,
+  .form-actions .ghost-button,
+  .inline-actions .primary-button,
+  .inline-actions .ghost-button,
+  .card-actions .primary-button,
+  .card-actions .ghost-button,
+  .login-card .primary-button {
+    width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    min-width: 0;
+    padding: 11px 12px;
+    border-radius: 13px;
+  }
+
+  .login-page {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 520px;
+    justify-self: center;
+  }
+
+  .hero-bullets,
+  .demo-grid {
+    gap: 10px;
+  }
+
+  .stat-grid,
+  .event-grid,
+  .featured-grid,
+  .club-grid,
+  .club-showcase-grid,
+  .insight-grid,
+  .room-card-grid,
+  .room-slot-grid,
+  .room-slot-grid-modern,
+  .team-grid,
+  .two-column,
+  .form-grid,
+  .filter-toolbar,
+  .filter-toolbar-wide,
+  .event-filter-toolbar,
+  .compact-filter-card .filter-toolbar,
+  .compact-filter-card .event-filter-toolbar,
+  .hero-metrics,
+  .hero-metrics-compact,
+  .club-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-grid,
+  .featured-grid,
+  .club-grid {
+    gap: 14px;
+  }
+
+  .event-card,
+  .club-card {
+    width: 100%;
+    min-height: 205px;
+  }
+
+  .event-card-body,
+  .club-card-body {
+    padding: 12px 13px;
+  }
+
+  .event-title,
+  .club-card-title {
+    font-size: 16px;
+    overflow-wrap: anywhere;
+  }
+
+  .event-badges,
+  .badge-row,
+  .event-mini-meta,
+  .club-card-footer,
+  .meta-row {
+    flex-wrap: wrap;
+  }
+
+  .status-panel,
+  .status-panel-wide,
+  .profile-identity-card,
+  .calendar-month-count,
+  .rooms-detail-head > strong {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .detail-table {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .detail-table > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .chart-box,
+  .section-card .recharts-wrapper,
+  .section-card .recharts-surface {
+    max-width: 100%;
+  }
+
+  .calendar-layout,
+  .calendar-layout-wide,
+  .calendar-modern-layout {
+    overflow-x: hidden;
+  }
+
+  .calendar-event-item,
+  .selected-event-card {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-status {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .modern-calendar-head {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    min-height: 76px;
+    padding: 14px;
+  }
+
+  .modern-calendar-head h2 {
+    font-size: 22px;
+  }
+
+  .modern-week-row {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .modern-month-grid {
+    gap: 5px;
+    padding: 12px;
+  }
+
+  .modern-day {
+    font-size: 14px;
+  }
+
+  .calendar-today-button {
+    width: calc(100% - 24px);
+    margin: 0 12px 14px;
+  }
+
+  .rooms-picker-panel,
+  .rooms-detail-panel {
+    border-radius: 22px;
+  }
+
+  .rooms-picker-panel {
+    padding: 12px;
+  }
+
+  .rooms-picker-list {
+    max-height: 360px;
+  }
+
+  .rooms-detail-panel {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .conversation-shell,
+  .conversation-header,
+  .conversation-reply {
+    max-width: 100%;
+  }
+
+  .conversation-reply {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-panel,
+  .message-drawer {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .top-navbar {
+    padding: 0 10px;
+  }
+
+  .navbar-container {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .brand-header strong {
+    font-size: 16px;
+  }
+
+  .navbar-right {
+    gap: 6px;
+  }
+
+  .icon-action,
+  .mobile-nav-toggle {
+    width: 38px;
+    height: 38px;
+  }
+
+  .profile-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .page-frame {
+    padding: 14px 10px 32px;
+  }
+
+  .page-hero,
+  .detail-hero,
+  .hero-card,
+  .login-card,
+  .section-card,
+  .rooms-modern-hero,
+  .calendar-modern-hero,
+  .rooms-detail-panel,
+  .rooms-picker-panel,
+  .modern-calendar-card,
+  .selected-day-panel {
+    border-radius: 18px;
+  }
+
+  .page-hero,
+  .detail-hero,
+  .hero-card,
+  .login-card,
+  .section-card,
+  .rooms-modern-hero,
+  .calendar-modern-hero {
+    padding: 15px;
+  }
+
+  h1,
+  .calendar-modern-hero h1,
+  .rooms-modern-hero h1 {
+    font-size: clamp(24px, 8vw, 31px);
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-card strong {
+    font-size: 28px;
+  }
+
+  .event-card,
+  .club-card {
+    min-height: 198px;
+  }
+
+  .pill {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .modern-week-row {
+    padding-inline: 8px;
+    font-size: 11px;
+  }
+
+  .modern-month-grid {
+    gap: 4px;
+    padding: 10px;
+  }
+
+  .modern-day {
+    font-size: 13px;
+  }
+
+  .modern-day small {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    line-height: 16px;
+  }
+
+  .room-slot {
+    min-height: 82px;
+  }
+}
+
+@media (max-width: 390px) {
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-header strong {
+    font-size: 15px;
+  }
+
+  .icon-action,
+  .mobile-nav-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .profile-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .navbar-right {
+    gap: 4px;
+  }
+
+  .primary-button,
+  .ghost-button,
+  .mini-button,
+  .link-button {
+    padding: 11px 13px;
+    border-radius: 13px;
+  }
+
+  .event-card,
+  .club-card {
+    min-height: 190px;
+  }
+}
+
+@media (max-width: 360px) {
+  .page-frame {
+    padding-inline: 8px;
+  }
+
+  .brand-header {
+    gap: 8px;
+  }
+
+  .brand-header strong {
+    font-size: 14px;
+  }
+
+  .navbar-right {
+    gap: 3px;
+  }
+
+  .event-badges .pill,
+  .club-card .pill {
+    font-size: 10px;
+    padding: 5px 7px;
+  }
+
+  .modern-calendar-head {
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    padding: 12px 10px;
+  }
+
+  .calendar-arrow {
+    width: 34px;
+    height: 34px;
+    font-size: 28px;
+  }
+
+  .modern-day {
+    font-size: 12px;
+  }
+}
