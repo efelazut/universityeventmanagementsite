@@ -6337,3 +6337,266 @@ textarea:focus {
     font-size: 12px;
   }
 }
+
+/* Navbar breakpoint reset: desktop stays classic, mobile owns the drawer */
+@media (min-width: 769px) {
+  .top-navbar {
+    z-index: 1000;
+    padding: 0 24px;
+  }
+
+  .navbar-container {
+    width: min(1320px, 100%);
+    max-width: 1320px;
+    height: 64px;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    min-width: 0;
+  }
+
+  .navbar-nav,
+  .navbar-nav.is-open {
+    position: static;
+    display: flex;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    gap: 16px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .navbar-link {
+    width: auto;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .mobile-nav-toggle {
+    display: none !important;
+  }
+
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-left: auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .avatar-button {
+    padding: 8px 12px 8px 8px;
+  }
+
+  .avatar-copy {
+    display: grid;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-navbar {
+    z-index: 1000;
+    padding: 0 16px;
+  }
+
+  .navbar-container {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 72px;
+    height: auto;
+    width: 100%;
+    padding: 8px 0;
+  }
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .brand-header {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-grid !important;
+    flex: 0 0 auto;
+    place-items: center;
+    gap: 4px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #55206d;
+    box-shadow: 0 10px 22px rgba(35, 15, 55, 0.16);
+    cursor: pointer;
+  }
+
+  .navbar-nav {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 80px;
+    z-index: 1100;
+    display: none;
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 104px);
+    overflow-y: auto;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 20px;
+    background: rgba(35, 15, 55, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 24px 60px rgba(20, 5, 35, 0.38);
+    backdrop-filter: none;
+  }
+
+  .navbar-nav.is-open {
+    display: grid;
+  }
+
+  .navbar-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 13px;
+    border-radius: 14px;
+    color: #fff;
+    font-weight: 850;
+    background: transparent;
+  }
+
+  .navbar-link:hover,
+  .navbar-link.active {
+    color: #fff;
+    background: rgba(205, 166, 232, 0.24);
+  }
+
+  .navbar-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    margin-left: auto;
+    flex-wrap: nowrap;
+  }
+
+  .avatar-copy {
+    display: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .top-navbar {
+    padding: 0 12px;
+  }
+
+  .navbar-container {
+    gap: 8px;
+    min-height: 68px;
+  }
+
+  .brand-header {
+    gap: 8px;
+  }
+
+  .brand-header strong {
+    font-size: 15px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navbar-right {
+    gap: 5px;
+  }
+
+  .icon-action,
+  .mobile-nav-toggle {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+  }
+
+  .profile-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  .navbar-nav {
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 390px) {
+  .brand-header strong {
+    font-size: 14px;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .navbar-container {
+    gap: 6px;
+  }
+
+  .navbar-right {
+    gap: 4px;
+  }
+
+  .icon-action,
+  .mobile-nav-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .profile-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .brand-header strong {
+    display: none;
+  }
+}

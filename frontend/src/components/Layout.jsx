@@ -109,7 +109,7 @@ export function Layout({ children }) {
 
             <nav className={`navbar-nav ${navOpen ? "is-open" : ""}`}>
               {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className="navbar-link">
+                <NavLink key={item.to} to={item.to} className="navbar-link" onClick={() => setNavOpen(false)}>
                   {item.title}
                 </NavLink>
               ))}
